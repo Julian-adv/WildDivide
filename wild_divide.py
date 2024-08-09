@@ -232,6 +232,6 @@ threading.Thread(target=wildcards.wildcard_load).start()
 
 NODE_CLASS_MAPPINGS = {"WildcardEncode": WildcardEncode, "Comfy Divide": ComfyDivide}
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "WildcardEncode": "Wildcard Encode (triple)",
+    "WildcardEncode": "Wildcard Encode (divided)",
     "Comfy Divide": "Comfy Divide",
 }
