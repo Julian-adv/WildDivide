@@ -1,0 +1,89 @@
+random:
+  - |-
+    __quality__,
+    __loras__,
+    __camera__,
+    __scene__
+quality: score_9, score_8_up, score_7_up, score_6_up
+loras:
+  - >-
+    <lora:ARAZ_FLP_003:0.3>,
+    <lora:Expressive_H-000001:0.3>,
+    <lora:Ghibli_style_PDXL:0.3>,
+    <lora:Nunna_pony_v31:0.3>,
+    <lora:Sinozick_Style_XL_Pony:0.3>,
+    <lora:super_beauty_face:0.3>,
+    <lora:urushihara-lora04_PonyXL-0004:0.3>,
+camera:
+  - cowboy shot
+  - full body shot
+  - pov
+  - close-up
+  - medium shot
+  - long shot
+  - side view
+  - back view
+  - front view
+  - top view
+  - bottom view
+scene:
+  - |-
+    10,
+    [SEP]
+    1girl, __1girl__, __girl_common__
+  - |-
+    50, 2girls,
+    [SEP]
+    __girl_common__, __1girl__,
+    [SEP]
+    __girl_common__, __1girl__
+  - |-
+    40,
+    [SEP]
+    3girls, __girl_common__, __1girl__,
+    [SEP]
+    3girls, __girl_common__, __1girl__,
+    [SEP]
+    3girls, __girl_common__, __1girl__
+girl_common:
+  - large breasts, long eyelashes, pale skin, slender, slim waist, long legs, tall
+1girl:
+  - __hair/desc__, __eyes__, __head__, __outfit__
+hair:
+  color:
+    - 20, blonde hair
+    - 20, platinum blonde hair
+    - 10, strawberry blonde hair
+    - 40, black hair
+    - 10, red hair
+  style:
+    - ponytail hair
+    - twintail hair
+    - ""
+  length:
+    - 90, long hair
+    - 10, ""
+  bang:
+    - ""
+    - with bangs
+  desc:
+    - __hair/length__, __hair/color__, __hair/style__ __hair/bang__
+eyes:
+  - 50, blue eyes
+  - 40, green eyes
+  - 10, brown eyes
+head:
+  - headdress
+  - tiara
+  - hair band
+  - ribbon
+legs:
+  garter:
+    - thigh highs, high heels
+outfit:
+  - 50, maid uniform, mini skirt, apron, __legs/garter__, gloves, choker
+  - 30, office suit, covered nipples, mini skirt, __legs/garter__
+  - 20, wedding dress, veil, corset, __legs/garter__
+  - 10, crop t-shirt, mini skirt, __legs/garter__
+  - 10, casual clothes, __legs/garter__
+  - 30, pelvis curtain, breast curtain, criss cross cut out dress, __legs/garter__
