@@ -69,6 +69,7 @@ def read_wildcard_dict(wildcard_path):
                     with open(file_path, "r", encoding="ISO-8859-1") as f:
                         yaml_data = yaml.load(f, Loader=yaml.FullLoader)
                 except yaml.reader.ReaderError as e:
+                    print(f"Error reading {file_path}: {e}")
                     with open(file_path, "r", encoding="UTF-8", errors="ignore") as f:
                         yaml_data = yaml.load(f, Loader=yaml.FullLoader)
 
@@ -231,6 +232,29 @@ def process(text, seed=None):
 
         return replaced_string, replacements_found
 
+    def find_substring_before_match(string, match):
+        # segs = string.split("[SEP]")
+        # for seg in segs:
+        #     index = seg.find(f"__{match}__")
+        #     if index != -1:
+        #         return seg[:index]
+        # return ""
+        index = string.find(f"__{match}__")
+        if index != -1:
+            return string[:index]
+        return ""
+
+    def regexp_or_weighted_choice(items, prefix):
+        no_slash_items = []
+        for item in items:
+            if item.startswith("/"):
+                pattern, replacement = item[1:].split("/", 1)
+                if re.search(pattern, prefix):
+                    return replacement
+            else:
+                no_slash_items.append(item)
+        return weighted_random_choice(no_slash_items)
+
     def replace_wildcard(string):
         pattern = r"__([\w.\-+/*\\]+)__"
         matches = re.findall(pattern, string)
@@ -242,7 +266,9 @@ def process(text, seed=None):
             keyword = wildcard_normalize(keyword)
             if keyword in local_wildcard_dict:
                 # replacement = random_gen.choice(local_wildcard_dict[keyword])
-                replacement = weighted_random_choice(local_wildcard_dict[keyword])
+                replacement = regexp_or_weighted_choice(
+                    local_wildcard_dict[keyword], find_substring_before_match(string, match)
+                )
                 replacements_found = True
                 string = string.replace(f"__{match}__", replacement, 1)
             elif "*" in keyword:
@@ -595,6 +621,6 @@ def wildcard_load():
             read_wildcard_dict(default_wildcards_path)
             print(f"{wildcard_dict}")
         except Exception as e:
-            print(f"[WildDivide] Failed to load custom wildcards directory.")
+            print(f"[WildDivide] Failed to load custom wildcards directory. {e}")
 
         print(f"[WildDivide] Wildcards loading done.")

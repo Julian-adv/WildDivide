@@ -182,21 +182,13 @@ class ComfyDivide:
         # for cond in region_conditionings[1:]:
         #     combined_conditioning = ConditioningCombine().combine(combined_conditioning, cond)[0]
 
-        max = 0
+        max_length = max([cond[0].shape[1] for cond in combined_conditioning])
         for cond in combined_conditioning:
-            print(cond[0].shape)
-            max = cond[0].shape[1] if cond[0].shape[1] > max else max
-        for cond in combined_conditioning:
-            if cond[0].shape[1] < max:
-                cond[0] = torch.cat(
-                    [
-                        cond[0],
-                        torch.zeros(
-                            (cond[0].shape[0], max - cond[0].shape[1], cond[0].shape[2]), device=cond[0].device
-                        ),
-                    ],
-                    dim=1,
-                )
+            if cond[0].shape[1] < max_length:
+                pad_length = max_length - cond[0].shape[1]
+                last_token_embedding = cond[0][:, -1:, :]
+                padding = last_token_embedding.repeat(1, pad_length, 1)
+                cond[0] = torch.cat([cond[0], padding], dim=1)
                 # cond[0] = torch.cat(
                 #     [cond[0], cond[0]],
                 #     dim=1,
