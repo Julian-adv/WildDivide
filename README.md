@@ -21,8 +21,28 @@ hair:
   - 1, red
 ```
 
-For example, writing `__hair__` will select blonde with a 4/(4+5+1) probability.
+For example, writing `__hair__` will select blonde with a 4/(4+5+1) = 4/10 probability.
 If a number is omitted, it is assumed to be 1.
+Functionally, this is the same as writing as below in [Impact Pack Wildcards](https://github.com/ltdrdata/ComfyUI-extension-tutorials/blob/Main/ComfyUI-Impact-Pack/tutorial/ImpactWildcard.md).
+
+```yaml
+hair:
+  - { 4::blonde|5::black|1::red }
+```
+
+### Child selection pattern
+
+Starting each line with / selects the line that fits that pattern. For example, if you write
+
+```yaml
+outfit:
+  - /skirt/ stockings
+  - /pants/ socks
+  - bare feet
+```
+
+If a _skirt_ was present at the prompt, _stockings_ would be selected, and if _pants_ were present,
+_socks_ would be selected. If there was no matching pattern, _bare feet_ would be selected.
 
 ### Split region
 

@@ -1,6 +1,6 @@
 {
-  "last_node_id": 80,
-  "last_link_id": 240,
+  "last_node_id": 84,
+  "last_link_id": 261,
   "nodes": [
     {
       "id": 52,
@@ -55,13 +55,13 @@
         {
           "name": "positive",
           "type": "CONDITIONING",
-          "link": 235,
+          "link": 255,
           "slot_index": 1
         },
         {
           "name": "negative",
           "type": "CONDITIONING",
-          "link": 236,
+          "link": 256,
           "slot_index": 2
         },
         {
@@ -85,7 +85,7 @@
         "Node name for S&R": "KSampler"
       },
       "widgets_values": [
-        981336370832510,
+        1052586911638213,
         "randomize",
         20,
         4,
@@ -148,7 +148,7 @@
       },
       "flags": {},
       "order": 14,
-      "mode": 4,
+      "mode": 0,
       "inputs": [
         {
           "name": "images",
@@ -336,54 +336,6 @@
       ]
     },
     {
-      "id": 4,
-      "type": "CheckpointLoaderSimple",
-      "pos": [
-        -290,
-        -820
-      ],
-      "size": {
-        "0": 320,
-        "1": 100
-      },
-      "flags": {},
-      "order": 4,
-      "mode": 0,
-      "outputs": [
-        {
-          "name": "MODEL",
-          "type": "MODEL",
-          "links": [
-            114,
-            225,
-            226
-          ],
-          "slot_index": 0
-        },
-        {
-          "name": "CLIP",
-          "type": "CLIP",
-          "links": [
-            88,
-            227
-          ],
-          "slot_index": 1
-        },
-        {
-          "name": "VAE",
-          "type": "VAE",
-          "links": [],
-          "slot_index": 2
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "CheckpointLoaderSimple"
-      },
-      "widgets_values": [
-        "speciosa25D_v12.safetensors"
-      ]
-    },
-    {
       "id": 56,
       "type": "SDXLEmptyLatentSizePicker+",
       "pos": [
@@ -395,7 +347,7 @@
         "1": 170
       },
       "flags": {},
-      "order": 5,
+      "order": 4,
       "mode": 0,
       "outputs": [
         {
@@ -471,13 +423,13 @@
         {
           "name": "positive",
           "type": "CONDITIONING",
-          "link": 237,
+          "link": 257,
           "slot_index": 4
         },
         {
           "name": "negative",
           "type": "CONDITIONING",
-          "link": 238,
+          "link": 258,
           "slot_index": 5
         },
         {
@@ -558,7 +510,7 @@
         512,
         true,
         1024,
-        628238189765679,
+        211024496789206,
         "randomize",
         20,
         4,
@@ -582,143 +534,6 @@
         1,
         false,
         20
-      ]
-    },
-    {
-      "id": 80,
-      "type": "Comfy Divide",
-      "pos": [
-        540,
-        -900
-      ],
-      "size": {
-        "0": 320,
-        "1": 220
-      },
-      "flags": {},
-      "order": 8,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "model",
-          "type": "MODEL",
-          "link": 230
-        },
-        {
-          "name": "positives",
-          "type": "CONDITIONING",
-          "link": 231
-        },
-        {
-          "name": "negative",
-          "type": "CONDITIONING",
-          "link": 240
-        }
-      ],
-      "outputs": [
-        {
-          "name": "model",
-          "type": "MODEL",
-          "links": [
-            232
-          ],
-          "shape": 3,
-          "slot_index": 0
-        },
-        {
-          "name": "positive",
-          "type": "CONDITIONING",
-          "links": [
-            233,
-            235,
-            237
-          ],
-          "shape": 3,
-          "slot_index": 1
-        },
-        {
-          "name": "negative",
-          "type": "CONDITIONING",
-          "links": [
-            234,
-            236,
-            238
-          ],
-          "shape": 3,
-          "slot_index": 2
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "Comfy Divide"
-      },
-      "widgets_values": [
-        "horizontal",
-        512,
-        512,
-        0.25,
-        0.5,
-        0.75
-      ]
-    },
-    {
-      "id": 3,
-      "type": "KSampler",
-      "pos": [
-        950,
-        -900
-      ],
-      "size": {
-        "0": 320,
-        "1": 480
-      },
-      "flags": {},
-      "order": 9,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "model",
-          "type": "MODEL",
-          "link": 232,
-          "slot_index": 0
-        },
-        {
-          "name": "positive",
-          "type": "CONDITIONING",
-          "link": 233
-        },
-        {
-          "name": "negative",
-          "type": "CONDITIONING",
-          "link": 234
-        },
-        {
-          "name": "latent_image",
-          "type": "LATENT",
-          "link": 122,
-          "slot_index": 3
-        }
-      ],
-      "outputs": [
-        {
-          "name": "LATENT",
-          "type": "LATENT",
-          "links": [
-            112
-          ],
-          "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "KSampler"
-      },
-      "widgets_values": [
-        32808092591196,
-        "randomize",
-        50,
-        4,
-        "dpmpp_2m",
-        "karras",
-        0.98
       ]
     },
     {
@@ -748,7 +563,7 @@
           "name": "CONDITIONING",
           "type": "CONDITIONING",
           "links": [
-            240
+            254
           ],
           "slot_index": 0
         }
@@ -761,16 +576,64 @@
       ]
     },
     {
+      "id": 4,
+      "type": "CheckpointLoaderSimple",
+      "pos": [
+        -290,
+        -820
+      ],
+      "size": {
+        "0": 320,
+        "1": 100
+      },
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            114,
+            225,
+            226
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            88,
+            227
+          ],
+          "slot_index": 1
+        },
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [],
+          "slot_index": 2
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CheckpointLoaderSimple"
+      },
+      "widgets_values": [
+        "speciosa25D_v12.safetensors"
+      ]
+    },
+    {
       "id": 78,
       "type": "WildcardEncode",
       "pos": [
         110,
         -900
       ],
-      "size": [
-        410,
-        810
-      ],
+      "size": {
+        "0": 410,
+        "1": 810
+      },
       "flags": {},
       "order": 7,
       "mode": 0,
@@ -793,7 +656,7 @@
           "name": "model",
           "type": "MODEL",
           "links": [
-            230
+            252
           ],
           "shape": 3,
           "slot_index": 0
@@ -811,7 +674,7 @@
           "name": "positives",
           "type": "CONDITIONING",
           "links": [
-            231
+            253
           ],
           "shape": 6,
           "slot_index": 2
@@ -828,19 +691,159 @@
       },
       "widgets_values": [
         "__random__",
-        "score_9, score_8_up, score_7_up, score_6_up,\n<lora:ARAZ_FLP_003:0.3>, <lora:Expressive_H-000001:0.3>, <lora:Ghibli_style_PDXL:0.3>, <lora:Nunna_pony_v31:0.3>, <lora:Sinozick_Style_XL_Pony:0.3>, <lora:super_beauty_face:0.3>, <lora:urushihara-lora04_PonyXL-0004:0.3>,,\nback view,\n 2girls,\n[SEP]\nlarge breasts, long eyelashes, pale skin, slender, slim waist, long legs, tall,  long hair,  black hair, twintail hair ,  blue eyes, tiara,  maid uniform, mini skirt, apron, thigh highs, high heels, gloves, choker,\n[SEP]\nlarge breasts, long eyelashes, pale skin, slender, slim waist, long legs, tall,  long hair,  red hair,  with bangs,  green eyes, headdress,  maid uniform, mini skirt, apron, thigh highs, high heels, gloves, choker",
+        "score_9, score_8_up, score_7_up, score_6_up,\n<lora:ARAZ_FLP_003:0.3>, <lora:Expressive_H-000001:0.3>, <lora:Ghibli_style_PDXL:0.3>, <lora:Nunna_pony_v31:0.3>, <lora:Sinozick_Style_XL_Pony:0.3>, <lora:super_beauty_face:0.3>, <lora:urushihara-lora04_PonyXL-0004:0.3>,,\nside view,\n 2girls,\n[SEP]\nlarge breasts, long eyelashes, pale skin, slender, slim waist, long legs, tall,  long hair,  black hair, twintail hair with bangs,  blue eyes, headdress,  maid uniform, mini skirt, apron, thigh highs, high heels, gloves, choker,\n[SEP]\nlarge breasts, long eyelashes, pale skin, slender, slim waist, long legs, tall,  long hair,  red hair, ponytail hair ,  blue eyes, ribbon,  office suit, covered nipples, mini skirt, thigh highs, high heels",
         true,
         "Select the LoRA to add to the text",
         "Select the Wildcard to add to the text",
-        506164845860920,
+        871186740663291,
         "randomize"
+      ]
+    },
+    {
+      "id": 3,
+      "type": "KSampler",
+      "pos": [
+        990,
+        -830
+      ],
+      "size": {
+        "0": 320,
+        "1": 480
+      },
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 259,
+          "slot_index": 0
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 260
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 261
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 122,
+          "slot_index": 3
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            112
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        654258205188369,
+        "randomize",
+        50,
+        4,
+        "dpmpp_2m",
+        "karras",
+        0.98
+      ]
+    },
+    {
+      "id": 84,
+      "type": "Comfy Divide",
+      "pos": [
+        580,
+        -890
+      ],
+      "size": {
+        "0": 320,
+        "1": 220
+      },
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 252,
+          "slot_index": 0
+        },
+        {
+          "name": "positives",
+          "type": "CONDITIONING",
+          "link": 253,
+          "slot_index": 1
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 254,
+          "slot_index": 2
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "links": [
+            259
+          ],
+          "shape": 3,
+          "slot_index": 0
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "links": [
+            255,
+            257,
+            260
+          ],
+          "shape": 3,
+          "slot_index": 1
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "links": [
+            256,
+            258,
+            261
+          ],
+          "shape": 3,
+          "slot_index": 2
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Comfy Divide"
+      },
+      "widgets_values": [
+        "horizontal",
+        512,
+        512,
+        0.25,
+        0.5,
+        0.75
       ]
     },
     {
       "id": 35,
       "type": "PreviewImage",
       "pos": [
-        540,
+        530,
         -900
       ],
       "size": {
@@ -993,78 +996,6 @@
       "CLIP"
     ],
     [
-      230,
-      78,
-      0,
-      80,
-      0,
-      "MODEL"
-    ],
-    [
-      231,
-      78,
-      2,
-      80,
-      1,
-      "CONDITIONING"
-    ],
-    [
-      232,
-      80,
-      0,
-      3,
-      0,
-      "MODEL"
-    ],
-    [
-      233,
-      80,
-      1,
-      3,
-      1,
-      "CONDITIONING"
-    ],
-    [
-      234,
-      80,
-      2,
-      3,
-      2,
-      "CONDITIONING"
-    ],
-    [
-      235,
-      80,
-      1,
-      54,
-      1,
-      "CONDITIONING"
-    ],
-    [
-      236,
-      80,
-      2,
-      54,
-      2,
-      "CONDITIONING"
-    ],
-    [
-      237,
-      80,
-      1,
-      45,
-      4,
-      "CONDITIONING"
-    ],
-    [
-      238,
-      80,
-      2,
-      45,
-      5,
-      "CONDITIONING"
-    ],
-    [
       239,
       78,
       1,
@@ -1073,10 +1004,82 @@
       "CLIP"
     ],
     [
-      240,
+      252,
+      78,
+      0,
+      84,
+      0,
+      "MODEL"
+    ],
+    [
+      253,
+      78,
+      2,
+      84,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      254,
       7,
       0,
-      80,
+      84,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      255,
+      84,
+      1,
+      54,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      256,
+      84,
+      2,
+      54,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      257,
+      84,
+      1,
+      45,
+      4,
+      "CONDITIONING"
+    ],
+    [
+      258,
+      84,
+      2,
+      45,
+      5,
+      "CONDITIONING"
+    ],
+    [
+      259,
+      84,
+      0,
+      3,
+      0,
+      "MODEL"
+    ],
+    [
+      260,
+      84,
+      1,
+      3,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      261,
+      84,
+      2,
+      3,
       2,
       "CONDITIONING"
     ]
@@ -1087,8 +1090,8 @@
     "ds": {
       "scale": 1.1,
       "offset": {
-        "0": -107.56255561251399,
-        "1": 1080.280700407841
+        "0": -111.80520989274197,
+        "1": 1003.3110300254295
       }
     }
   },
