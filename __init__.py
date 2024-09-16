@@ -19,7 +19,7 @@ try:
     cm_global.register_extension(
         "WildDivide",
         {
-            "version": "0.1.0",
+            "version": "0.2.0",
             "name": "Wild Divide",
             "nodes": set(NODE_CLASS_MAPPINGS.keys()),
             "description": "This extension provides the ability to build prompts using wildcards for each region of a split image.",

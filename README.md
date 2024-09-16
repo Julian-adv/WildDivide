@@ -32,7 +32,7 @@ hair:
 
 ### Child selection pattern
 
-Starting each line with / selects the line that fits that pattern. For example, if you write
+Starting a line with / selects the line that matches the pattern. For example, if you write
 
 ```yaml
 outfit:
@@ -46,17 +46,16 @@ _socks_ would be selected. If there was no matching pattern, _bare feet_ would b
 
 ### Split region
 
-You can use `[SEP]` to divide an image into different regions. The first `[SEP]` applies to the entire image, and each subsequent `[SEP]` divides the image into _n_ equal parts.
+You can use `[SEP]` to divide an image into different regions. Each `[SEP]` divides the image into _n_ equal parts.
 
 ```yaml
-scene: score_9 [SEP] blonde hair [SEP] black hair
+scene: blonde hair [SEP] black hair
 ```
 
-For example, if written as above, `score_9` would be applied to the entire image, `blonde hair` would be applied to the left half of the image, `black hair` would be applied to the right half of the image.
+For example, if written as above, `blonde hair` would be applied to the left half of the image, `black hair` would be applied to the right half of the image.
 
 ## Comfy Divide
 
 ![Comfy Divide](docs/screenshot1.png)
 
 - Connect `positives` to `positives` in `Wildcard Encode (divided)`.
-- `split_1`, `split_2`, `split_3` are not working currently.
