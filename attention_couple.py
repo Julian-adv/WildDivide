@@ -36,7 +36,9 @@ def set_model_patch_replace(model, patch, key):
         to["patches_replace"]["attn2"] = {}
     to["patches_replace"]["attn2"][key] = patch
 
-class AttentionCouple:
+# It's from https://github.com/laksjdjf/attention-couple-ComfyUI
+# I changed the name to prevent conflict
+class AttentionCoupleWildDivide:
 
     @classmethod
     def INPUT_TYPES(s):
@@ -156,9 +158,9 @@ class AttentionCouple:
         return patch
         
 NODE_CLASS_MAPPINGS = {
-    "Attention couple": AttentionCouple
+    "Attention couple wild divide": AttentionCoupleWildDivide
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "Attention couple": "Load Attention couple",
+    "Attention couple wild divide": "Attention couple wild divide",
 }

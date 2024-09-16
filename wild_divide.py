@@ -2,7 +2,7 @@ import torch
 import folder_paths
 from nodes import MAX_RESOLUTION, ConditioningCombine, ConditioningSetMask
 from comfy_extras.nodes_mask import MaskComposite, SolidMask
-from .attention_couple import AttentionCouple
+from .attention_couple import AttentionCoupleWildDivide
 from . import wildcards
 
 
@@ -60,8 +60,6 @@ class WildcardEncode:
 
     def doit(self, *args, **kwargs):
         populated = kwargs["populated_text"]
-        wildcard_text = kwargs["wildcard_text"]
-        print(f"WildDivide {wildcard_text}")
         processed = []
         model, clip, positives = wildcards.process_with_loras(
             wildcard_opt=populated,
@@ -139,7 +137,7 @@ class ComfyDivide:
                 last_token_embedding = cond[0][:, -1:, :]
                 padding = last_token_embedding.repeat(1, pad_length, 1)
                 cond[0] = torch.cat([cond[0], padding], dim=1)
-        return AttentionCouple().attention_couple(model[0], positive_combined, negative[0], "Attention")
+        return AttentionCoupleWildDivide().attention_couple(model[0], positive_combined, negative[0], "Attention")
 
     def calculate_mask_rects(self, orientation, divisions, width, height):
         mask_rects = []

@@ -122,7 +122,6 @@ def weighted_random_choice(items):
     for weight, content in weighted_items:
         current_weight += weight
         if r <= current_weight:
-            print(f"CHOICE: {r:.2f}/{total_weight} -> {content}")
             return content
 
     return weighted_items[-1][1]
@@ -462,15 +461,11 @@ def process_pass1(pass1, lora_name_cache, model, clip, clip_encoder=None, seed=N
     if len(pass3) == 0:
         pass3 = [""]
 
-    pass3_str = [f"[{x}]" for x in pass3]
-    print(f"CLIP: {str.join(' + ', pass3_str)}")
-
     result = None
 
     for prompt in pass3:
         if clip_encoder is None:
             cur = nodes.CLIPTextEncode().encode(clip, prompt)[0]
-            print(f"{prompt}: {cur[0][0].shape}")
         else:
             cur = clip_encoder.encode(clip, prompt)[0]
 
@@ -501,7 +496,6 @@ def process_with_loras(wildcard_opt, model, clip, clip_encoder=None, seed=None, 
 
     lora_name_cache = []
 
-    print(f"INPUT: {wildcard_opt}")
     pass1_parts = process(wildcard_opt, seed).split("[SEP]")
     result = []
 
@@ -619,7 +613,6 @@ def wildcard_load():
 
         try:
             read_wildcard_dict(default_wildcards_path)
-            print(f"{wildcard_dict}")
         except Exception as e:
             print(f"[WildDivide] Failed to load custom wildcards directory. {e}")
 
