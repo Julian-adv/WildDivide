@@ -102,22 +102,22 @@ def process_comment_out(text):
 
 def weighted_random_choice(items):
     weighted_items = []
-    total_weight = 0
+    total_weight = 0.0
 
     for item in items:
         parts = item.split(",", 1)  # split on first comma
-        if parts[0].isdigit():
-            weight = int(parts[0])
+        if is_numeric_string(parts[0].strip()):
+            weight = float(parts[0].strip())
             content = parts[1] if len(parts) > 1 else ""
         else:
-            weight = 1
+            weight = 1.0
             content = item
 
         total_weight += weight
         weighted_items.append((weight, content))
 
-    r = random.uniform(0, total_weight)
-    current_weight = 0
+    r = random.uniform(0.0, total_weight)
+    current_weight = 0.0
 
     for weight, content in weighted_items:
         current_weight += weight

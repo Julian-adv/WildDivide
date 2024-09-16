@@ -91,20 +91,6 @@ class ComfyDivide:
                     {"default": 512, "min": 16, "max": MAX_RESOLUTION, "step": 8},
                 ),
             },
-            "optional": {
-                "split_1": (
-                    "FLOAT",
-                    {"default": 0.25, "min": 0, "max": 1.0, "step": 0.01},
-                ),
-                "split_2": (
-                    "FLOAT",
-                    {"default": 0.50, "min": 0, "max": 1.0, "step": 0.01},
-                ),
-                "split_3": (
-                    "FLOAT",
-                    {"default": 0.75, "min": 0, "max": 1.0, "step": 0.01},
-                ),
-            },
         }
 
     RETURN_TYPES = (
@@ -129,90 +115,46 @@ class ComfyDivide:
         orientation,
         width,
         height,
-        split_1=0.25,
-        split_2=0.50,
-        split_3=0.75,
     ):
 
-        divisions = len(positives) - 1
-        splits = [split_1[0], split_2[0], split_3[0]][: divisions - 1]
-
-        # if len(positives) != divisions:
-        #     raise ValueError(
-        #         f"Number of additional positive conditionings ({len(positives)}) must match the number of divisions ({divisions})"
-        #     )
-        # Generate default splits based on divisions
-        default_splits = self.generate_default_splits(divisions)
-
-        # Use custom splits if provided, otherwise use default splits
-        # custom_splits = [split_1, split_2, split_3][: divisions - 1]
-        # splits = custom_splits if all(custom_splits) else default_splits
-        splits = default_splits
-
-        for i in range(1, len(splits)):
-            if splits[i] <= splits[i - 1]:
-                raise ValueError(f"split_{i+1} must be greater than split_{i}")
-
-        mask_rects = self.calculate_mask_rects(orientation[0], divisions, splits, width[0], height[0])
-
+        divisions = len(positives)
+        mask_rects = self.calculate_mask_rects(orientation[0], divisions, width[0], height[0])
         solid_mask_zero = SolidMask().solid(0.0, width[0], height[0])[0]
-        solid_mask_one = SolidMask().solid(1.0, width[0], height[0])[0]
-        mask_composites = []
-
-        for rect in mask_rects:
-            print(rect)
-            solid_mask = SolidMask().solid(1.0, rect[2], rect[3])[0]
-            mask_composite = MaskComposite().combine(solid_mask_zero, solid_mask, rect[0], rect[1], "add")[0]
-            mask_composites.append(mask_composite)
-
-        # Apply base conditioning (positive_base) to the entire image
-        base_conditioning = ConditioningSetMask().append(positives[0], solid_mask_one, "default", 1.0)[0]
-
-        # Apply additional conditionings to specific regions
-        region_conditionings = [
-            ConditioningSetMask().append(positive, mask_composite, "default", 1.0)[0]
-            for positive, mask_composite in zip(positives[1:], mask_composites)
+        solid_masks = [SolidMask().solid(1.0, rect[2], rect[3])[0] for rect in mask_rects]
+        mask_composites = [
+            MaskComposite().combine(solid_mask_zero, solid_mask, rect[0], rect[1], "add")[0]
+            for rect, solid_mask in zip(mask_rects, solid_masks)
         ]
-
-        # Combine all conditionings
-        combined_conditioning = base_conditioning
-        for cond in region_conditionings:
-            combined_conditioning = ConditioningCombine().combine(combined_conditioning, cond)[0]
-        # combined_conditioning = region_conditionings[0]
-        # for cond in region_conditionings[1:]:
-        #     combined_conditioning = ConditioningCombine().combine(combined_conditioning, cond)[0]
-
-        max_length = max([cond[0].shape[1] for cond in combined_conditioning])
-        for cond in combined_conditioning:
+        conditioning_masks = [
+            ConditioningSetMask().append(positive, mask_composite, "default", 1.0)[0]
+            for positive, mask_composite in zip(positives, mask_composites)
+        ]
+        positive_combined = conditioning_masks[0]
+        for i in range(1, len(conditioning_masks)):
+            positive_combined = ConditioningCombine().combine(positive_combined, conditioning_masks[i])[0]
+        max_length = max([cond[0].shape[1] for cond in positive_combined])
+        for cond in positive_combined:
             if cond[0].shape[1] < max_length:
                 pad_length = max_length - cond[0].shape[1]
                 last_token_embedding = cond[0][:, -1:, :]
                 padding = last_token_embedding.repeat(1, pad_length, 1)
                 cond[0] = torch.cat([cond[0], padding], dim=1)
-                # cond[0] = torch.cat(
-                #     [cond[0], cond[0]],
-                #     dim=1,
-                # )
-                print(f"cat: {cond[0].shape}")
-        return AttentionCouple().attention_couple(model[0], combined_conditioning, negative[0], "Attention")
+        return AttentionCouple().attention_couple(model[0], positive_combined, negative[0], "Attention")
 
-    def generate_default_splits(self, divisions):
-        return [i / divisions for i in range(1, divisions)]
-
-    def calculate_mask_rects(self, orientation, divisions, splits, width, height):
+    def calculate_mask_rects(self, orientation, divisions, width, height):
         mask_rects = []
 
         if orientation == "horizontal":
-            widths = [int(width * split) for split in splits] + [width]
+            rect_width = width // divisions
             for i in range(divisions):
-                x = 0 if i == 0 else widths[i - 1]
-                w = widths[i] - x
+                x = i * rect_width
+                w = rect_width if i < divisions - 1 else width - x
                 mask_rects.append((x, 0, w, height))
         elif orientation == "vertical":
-            heights = [int(height * split) for split in splits] + [height]
+            rect_height = height // divisions
             for i in range(divisions):
-                y = 0 if i == 0 else heights[i - 1]
-                h = heights[i] - y
+                y = i * rect_height
+                h = rect_height if i < divisions - 1 else height - y
                 mask_rects.append((0, y, width, h))
 
         return mask_rects
