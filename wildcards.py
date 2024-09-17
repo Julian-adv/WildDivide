@@ -252,15 +252,18 @@ def process(text, seed=None):
                     return replacement
             else:
                 no_slash_items.append(item)
+        if len(no_slash_items) == 0:
+            return ""
         return weighted_random_choice(no_slash_items)
 
     def replace_wildcard(string):
         pattern = r"__([\w.\-+/*\\]+)__"
-        matches = re.findall(pattern, string)
+        match = re.search(pattern, string)
 
         replacements_found = False
 
-        for match in matches:
+        if match is not None:
+            match = match.group(1)
             keyword = match.lower()
             keyword = wildcard_normalize(keyword)
             if keyword in local_wildcard_dict:
@@ -289,7 +292,7 @@ def process(text, seed=None):
 
         return string, replacements_found
 
-    replace_depth = 100
+    replace_depth = 1000
     stop_unwrap = False
     while not stop_unwrap and replace_depth > 1:
         replace_depth -= 1  # prevent infinite loop
