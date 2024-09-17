@@ -89,6 +89,9 @@ class ComfyDivide:
                     {"default": 512, "min": 16, "max": MAX_RESOLUTION, "step": 8},
                 ),
             },
+            "optional": {
+                "overall": ("BOOLEAN", {"default": True}),
+            },
         }
 
     RETURN_TYPES = (
@@ -113,10 +116,24 @@ class ComfyDivide:
         orientation,
         width,
         height,
+        overall=True,
     ):
 
         divisions = len(positives)
+        if divisions == 1:
+            overall = False
+        if overall:
+            divisions -= 1
+        if divisions <= 0:
+            raise Exception("Divisions should be more than 0")
+
         mask_rects = self.calculate_mask_rects(orientation[0], divisions, width[0], height[0])
+        if overall:
+            mask_rects.insert(0, (0, 0, width[0], height[0]))
+
+        for i in range(len(mask_rects)):
+            print(f"mask_rects[{i}]: {mask_rects[i]}")
+
         solid_mask_zero = SolidMask().solid(0.0, width[0], height[0])[0]
         solid_masks = [SolidMask().solid(1.0, rect[2], rect[3])[0] for rect in mask_rects]
         mask_composites = [
@@ -127,6 +144,7 @@ class ComfyDivide:
             ConditioningSetMask().append(positive, mask_composite, "default", 1.0)[0]
             for positive, mask_composite in zip(positives, mask_composites)
         ]
+
         positive_combined = conditioning_masks[0]
         for i in range(1, len(conditioning_masks)):
             positive_combined = ConditioningCombine().combine(positive_combined, conditioning_masks[i])[0]
