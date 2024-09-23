@@ -246,7 +246,9 @@ def process(text, seed=None):
     def regexp_or_weighted_choice(items, prefix):
         no_slash_items = []
         for item in items:
-            if item.startswith("/"):
+            if item is None:
+                no_slash_items.append("")
+            elif item.startswith("/"):
                 pattern, replacement = item[1:].split("/", 1)
                 if re.search(pattern, prefix):
                     return replacement
