@@ -231,29 +231,20 @@ def process(text, seed=None):
 
         return replaced_string, replacements_found
 
-    def find_substring_before_match(string, match):
-        # segs = string.split("[SEP]")
-        # for seg in segs:
-        #     index = seg.find(f"__{match}__")
-        #     if index != -1:
-        #         return seg[:index]
-        # return ""
-        index = string.find(f"__{match}__")
-        if index != -1:
-            return string[:index]
-        return ""
-
     def regexp_or_weighted_choice(items, prefix):
         no_slash_items = []
+        matched_items = []
         for item in items:
             if item is None:
                 no_slash_items.append("")
             elif item.startswith("/"):
                 pattern, replacement = item[1:].split("/", 1)
                 if re.search(pattern, prefix):
-                    return replacement
+                    matched_items.append(replacement if replacement is not None else "")
             else:
                 no_slash_items.append(item)
+        if len(matched_items) > 0:
+            return weighted_random_choice(matched_items)
         if len(no_slash_items) == 0:
             return ""
         return weighted_random_choice(no_slash_items)
@@ -265,16 +256,14 @@ def process(text, seed=None):
         replacements_found = False
 
         if match is not None:
-            match = match.group(1)
-            keyword = match.lower()
+            match_str = match.group(1)
+            keyword = match_str.lower()
             keyword = wildcard_normalize(keyword)
             if keyword in local_wildcard_dict:
                 # replacement = random_gen.choice(local_wildcard_dict[keyword])
-                replacement = regexp_or_weighted_choice(
-                    local_wildcard_dict[keyword], find_substring_before_match(string, match)
-                )
+                replacement = regexp_or_weighted_choice(local_wildcard_dict[keyword], string[:match.start()])
                 replacements_found = True
-                string = string.replace(f"__{match}__", replacement, 1)
+                string = string.replace(f"__{match_str}__", replacement, 1)
             elif "*" in keyword:
                 subpattern = keyword.replace("*", ".*").replace("+", "\\+")
                 total_patterns = []
@@ -285,11 +274,11 @@ def process(text, seed=None):
                         found = True
 
                 if found:
-                    replacement = random_gen.choice(total_patterns)
+                    replacement = regexp_or_weighted_choice(total_patterns, string[:match.start()])
                     replacements_found = True
-                    string = string.replace(f"__{match}__", replacement, 1)
+                    string = string.replace(f"__{match_str}__", replacement, 1)
             elif "/" not in keyword:
-                string_fallback = string.replace(f"__{match}__", f"__*/{match}__", 1)
+                string_fallback = string.replace(f"__{match_str}__", f"__*/{match_str}__", 1)
                 string, replacements_found = replace_wildcard(string_fallback)
 
         return string, replacements_found
