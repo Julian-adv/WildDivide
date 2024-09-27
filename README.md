@@ -30,9 +30,9 @@ hair:
   - { 4::blonde|5::black|1::red }
 ```
 
-### Child selection by pattern
+### Pattern-based Child Selection
 
-If a line starts with `/`, it selects the line when the pattern matches the prompt up to there. For example, if you write
+Lines beginning with `/` are selected when the pattern matches the prompt up to that point. For example:
 
 ```yaml
 outfit:
@@ -45,11 +45,10 @@ legs:
   - bare feet
 ```
 
-If `__outfit__` selects `blouse, skirt` (by 1/3 chance), `__legs__` will be expanded to `stockings` because `/skirt/` matches.
-If there is no matching pattern(`swimsuit` in this case), `bare feet` would be selected.
+If `__outfit__` expands to `blouse, skirt` (with a 1/3 probability), `__legs__` will subsequently expand to `stockings` because the `/skirt/` pattern matches.
+In cases where no pattern matches (e.g., when `swimsuit` is selected), the default option `bare feet` would be chosen.
 
-If a line starts with `~/`, it selects the line when the pattern doesn't match the prompt.
-For example:
+Lines starting with `/!` are selected when the pattern does not match the prompt. For instance:
 
 ```yaml
 outfit:
@@ -57,11 +56,25 @@ outfit:
   - dress
   - swimsuit
 legs:
-  - ~/swimsuit/ stockings
+  - /!swimsuit/ stockings
   - bare feet
 ```
 
-If `swimsuit` doesn't match, `stockings` would be selected. In this case, `blouse, skirt` and `dress`.
+Here, `stockings` would be selected for any outfit that doesn't include `swimsuit` (i.e., `blouse, skirt` or `dress`).
+
+Lines starting with `+/` (or `+/!`) add the corresponding option to the list of candidates when the pattern matches (or doesn't match) the prompt, rather than replacing the existing options. For example:
+
+```yaml
+outfit:
+  - blouse, skirt
+  - dress
+  - swimsuit
+legs:
+  - +/skirt/ stockings
+  - bare feet
+```
+
+In this scenario, if `__outfit__` expands to `blouse, skirt` (with a 1/3 probability), the `/skirt/` pattern will match. Consequently, `stockings` will be added to the list of candidates for `__legs__`, resulting in two options: `stockings` and `bare feet`. The final selection will then be made randomly from these two options, each with an equal probability.
 
 ### Split region
 

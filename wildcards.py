@@ -232,26 +232,34 @@ def process(text, seed=None):
         return replaced_string, replacements_found
 
     def regexp_or_weighted_choice(items, prefix):
-        no_slash_items = []
-        matched_items = []
+        always_items = []
+        conditional_items = []
         for item in items:
             if item is None:
-                no_slash_items.append("")
+                always_items.append("")
             elif item.startswith("/"):
                 pattern, replacement = item[1:].split("/", 1)
                 if re.search(pattern, prefix, re.IGNORECASE):
-                    matched_items.append(replacement if replacement is not None else "")
-            elif item.startswith("~/"):
+                    conditional_items.append(replacement if replacement is not None else "")
+            elif item.startswith("+/"):
+                pattern, replacement = item[2:].split("/", 1)
+                if re.search(pattern, prefix, re.IGNORECASE):
+                    always_items.append(replacement if replacement is not None else "")
+            elif item.startswith("/!"):
                 pattern, replacement = item[2:].split("/", 1)
                 if not re.search(pattern, prefix, re.IGNORECASE):
-                    matched_items.append(replacement if replacement is not None else "")
+                    conditional_items.append(replacement if replacement is not None else "")
+            elif item.startswith("+/!"):
+                pattern, replacement = item[3:].split("/", 1)
+                if not re.search(pattern, prefix, re.IGNORECASE):
+                    always_items.append(replacement if replacement is not None else "")
             else:
-                no_slash_items.append(item)
-        if len(matched_items) > 0:
-            return weighted_random_choice(matched_items)
-        if len(no_slash_items) == 0:
+                always_items.append(item)
+        if len(conditional_items) > 0:
+            return weighted_random_choice(conditional_items)
+        if len(always_items) == 0:
             return ""
-        return weighted_random_choice(no_slash_items)
+        return weighted_random_choice(always_items)
 
     def replace_wildcard(string):
         pattern = r"__([\w.\-+/*\\]+)__"
