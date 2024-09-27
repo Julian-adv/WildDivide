@@ -30,19 +30,38 @@ hair:
   - { 4::blonde|5::black|1::red }
 ```
 
-### Child selection pattern
+### Child selection by pattern
 
-Starting a line with / selects the line that matches the pattern. For example, if you write
+If a line starts with `/`, it selects the line when the pattern matches the prompt up to there. For example, if you write
 
 ```yaml
 outfit:
+  - blouse, skirt, __legs__
+  - shirt, pants, __legs__
+  - swimsuit, __legs__
+legs:
   - /skirt/ stockings
   - /pants/ socks
   - bare feet
 ```
 
-If a _skirt_ was present at the prompt, _stockings_ would be selected, and if _pants_ were present,
-_socks_ would be selected. If there was no matching pattern, _bare feet_ would be selected.
+If `__outfit__` selects `blouse, skirt` (by 1/3 chance), `__legs__` will be expanded to `stockings` because `/skirt/` matches.
+If there is no matching pattern(`swimsuit` in this case), `bare feet` would be selected.
+
+If a line starts with `~/`, it selects the line when the pattern doesn't match the prompt.
+For example:
+
+```yaml
+outfit:
+  - blouse, skirt
+  - dress
+  - swimsuit
+legs:
+  - ~/swimsuit/ stockings
+  - bare feet
+```
+
+If `swimsuit` doesn't match, `stockings` would be selected. In this case, `blouse, skirt` and `dress`.
 
 ### Split region
 
