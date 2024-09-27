@@ -239,7 +239,11 @@ def process(text, seed=None):
                 no_slash_items.append("")
             elif item.startswith("/"):
                 pattern, replacement = item[1:].split("/", 1)
-                if re.search(pattern, prefix):
+                if re.search(pattern, prefix, re.IGNORECASE):
+                    matched_items.append(replacement if replacement is not None else "")
+            elif item.startswith("~/"):
+                pattern, replacement = item[2:].split("/", 1)
+                if not re.search(pattern, prefix, re.IGNORECASE):
                     matched_items.append(replacement if replacement is not None else "")
             else:
                 no_slash_items.append(item)
