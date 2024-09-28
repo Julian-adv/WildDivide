@@ -27,7 +27,7 @@ def onprompt_populate_wildcards(json_data):
 
     updated_widget_values = {}
     for k, v in prompt.items():
-        if "class_type" in v and (v["class_type"] == "WildcardEncode" or v["class_type"] == "WildcardProcessor"):
+        if "class_type" in v and (v["class_type"] == "WildcardDivide" or v["class_type"] == "WildcardEncode" or v["class_type"] == "WildcardProcessor"):
             inputs = v["inputs"]
             if inputs["mode"] and isinstance(inputs["populated_text"], str):
                 if isinstance(inputs["seed"], list):

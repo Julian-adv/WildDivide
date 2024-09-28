@@ -17,7 +17,7 @@ export function get_wildcards_list() {
 app.registerExtension({
   name: "Wild.Divide",
   nodeCreated(node, app) {
-    if (node.comfyClass == "WildcardEncode") {
+    if (node.comfyClass == "WildcardEncode" || node.comfyClass == "WildcardDivide") {
       node._value = "Select the LoRA to add to the text";
       node._wvalue = "Select the Wildcard to add to the text";
 
@@ -27,6 +27,7 @@ app.registerExtension({
 
       switch (node.comfyClass) {
         case "WildcardEncode":
+        case "WildcardDivide":
           tbox_id = 0;
           combo_id = 3;
           break;
@@ -94,7 +95,7 @@ app.registerExtension({
       };
     }
 
-    if (node.comfyClass == "ImpactWildcardEncode") {
+    if (node.comfyClass == "WildcardEncode" || node.comfyClass == "WildcardDivide") {
       node.widgets[0].inputEl.placeholder = "Wildcard Prompt (User input)";
       node.widgets[1].inputEl.placeholder =
         "Populated Prompt (Will be generated automatically)";

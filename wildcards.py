@@ -486,6 +486,25 @@ def process_pass1(pass1, lora_name_cache, model, clip, clip_encoder=None, seed=N
         processed.append(pass3)
     return model, clip, result
 
+def extract_options(text):
+    """
+    Extracts all options starting with 'opt:' from the text and removes them.
+    
+    :param text: Text to process
+    :return: (Modified text, Options dictionary)
+    """
+    options = {}
+    pattern = r'opt:(\w+)'
+    
+    def replace_option(match):
+        option = match.group(1)
+        options[option] = True
+        return ''
+    
+    # Find options, remove them, and store in dictionary
+    modified_text = re.sub(pattern, replace_option, text)
+    
+    return modified_text, options
 
 def process_with_loras(wildcard_opt, model, clip, clip_encoder=None, seed=None, processed=None):
     """
@@ -497,19 +516,21 @@ def process_with_loras(wildcard_opt, model, clip, clip_encoder=None, seed=None, 
     :param clip_encoder: you can pass custom encoder such as adv_cliptext_encode
     :param seed: seed for populating
     :param processed: output variable - [pass1, pass2, pass3] will be saved into passed list
-    :return: model, clip, conditioning
+    :return: model, clip, conditioning, options
     """
 
     lora_name_cache = []
 
-    pass1_parts = process(wildcard_opt, seed).split("[SEP]")
+    pass1_result = process(wildcard_opt, seed)
+    pass1_result, options = extract_options(pass1_result)
+    pass1_parts = pass1_result.split("[SEP]")
     result = []
 
     for part in pass1_parts:
         model, clip, part_result = process_pass1(part, lora_name_cache, model, clip, clip_encoder, seed, processed)
         result.append(part_result)
 
-    return model, clip, result
+    return model, clip, result, options
 
 
 def starts_with_regex(pattern, text):
