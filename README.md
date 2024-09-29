@@ -1,18 +1,17 @@
-# WildDivide
+# Wildcard Divide
 
 ComfyUI custom node that specifies wildcard prompts for multiple regions
 
 ![screenshot](docs/screenshot.png)
 The above workflow is [docs/example.json](docs/example.json).
 
-## Wildcard Encode (divided)
+## Wildcard Divide Node
 
-It has the same syntax as [Impact Pack Wildcards](https://github.com/ltdrdata/ComfyUI-extension-tutorials/blob/Main/ComfyUI-Impact-Pack/tutorial/ImpactWildcard.md).
-In addition, it supports the following syntax
+This node incorporates the syntax of [Impact Pack Wildcards](https://github.com/ltdrdata/ComfyUI-extension-tutorials/blob/Main/ComfyUI-Impact-Pack/tutorial/ImpactWildcard.md) while introducing additional syntactical features.
 
-### Child selection weight
+### Weighted Child Selection
 
-If you write a number at the beginning, that number becomes the weight to select that line.
+You can assign selection weights to options by prefixing them with a numerical value. This number determines the likelihood of that particular option being chosen.
 
 ```yaml
 hair:
@@ -21,13 +20,14 @@ hair:
   - 1, red
 ```
 
-For example, writing `__hair__` will select blonde with a 4/(4+5+1) = 4/10 probability.
-If a number is omitted, it is assumed to be 1.
-Functionally, this is the same as writing as below in [Impact Pack Wildcards](https://github.com/ltdrdata/ComfyUI-extension-tutorials/blob/Main/ComfyUI-Impact-Pack/tutorial/ImpactWildcard.md).
+In this example, invoking `__hair__` will result in "blonde" being selected with a probability of 4/(4+5+1) = 4/10 = 0.4.
+When a numerical prefix is omitted, a default weight of 1 is assumed.
+
+This weighted selection mechanism is functionally equivalent to the following syntax in [Impact Pack Wildcards](https://github.com/ltdrdata/ComfyUI-extension-tutorials/blob/Main/ComfyUI-Impact-Pack/tutorial/ImpactWildcard.md):
 
 ```yaml
 hair:
-  - { 4::blonde|5::black|1::red }
+  - {4::blonde|5::black|1::red}
 ```
 
 ### Pattern-based Child Selection
@@ -81,13 +81,31 @@ In this scenario, if `__outfit__` expands to `blouse, skirt` (with a 1/3 probabi
 You can use `[SEP]` to divide an image into different regions. Each `[SEP]` divides the image into _n_ equal parts.
 
 ```yaml
-scene: blonde hair [SEP] black hair
+scene: 2girls [SEP] blonde hair [SEP] black hair
 ```
 
-For example, if written as above, `blonde hair` would be applied to the left half of the image, `black hair` would be applied to the right half of the image.
+For example, if written as above, `2girls` would be applied to the entire image, `blonde hair` to the left half of the image, and `black hair` to the right half.
 
-## Comfy Divide
+### Split Direction
 
-![Comfy Divide](docs/screenshot1.png)
+You can specify the orientation of the split using the `opt:horizontal` and `opt:vertical` options.
 
-- Connect `positives` to `positives` in `Wildcard Encode (divided)`.
+```yaml
+scene:
+  - opt:horizontal 2girls [SEP] blonde hair [SEP] black hair
+  - opt:vertical sky [SEP] blue sky [SEP] red sky
+```
+
+This syntax allows for precise control over image segmentation:
+
+1. Horizontal Split (Left to Right):
+   If the first option is selected, the image is divided horizontally. In this case:
+   - `2girls` applies to the entire image
+   - `blonde hair` is applied to the left half
+   - `black hair` is applied to the right half
+
+2. Vertical Split (Top to Bottom):
+   If the second option is chosen, the image is segmented vertically:
+   - `sky` is applied across the entire image
+   - `blue sky` affects the top half
+   - `red sky` influences the bottom half
