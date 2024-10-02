@@ -235,7 +235,7 @@ def process(text, seed=None):
         always_items = []
         conditional_items = []
         for item in items:
-            if item is None:
+            if item is None or not isinstance(item, str):
                 always_items.append("")
             elif item.startswith("/"):
                 pattern, replacement = item[1:].split("/", 1)
