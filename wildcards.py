@@ -498,12 +498,16 @@ def extract_options(text):
     
     def replace_option(match):
         option = match.group(1)
-        options[option] = True
+        size_match = re.match(r'(\d+)x(\d+)', option)
+        if size_match:
+            options['width'] = int(size_match.group(1))
+            options['height'] = int(size_match.group(2))
+        else:
+            options[option] = True
         return ''
     
     # Find options, remove them, and store in dictionary
     modified_text = re.sub(pattern, replace_option, text)
-    
     return modified_text, options
 
 def process_with_loras(wildcard_opt, model, clip, clip_encoder=None, seed=None, processed=None):

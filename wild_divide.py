@@ -223,13 +223,17 @@ class WildcardDivide:
         "CONDITIONING",
         "CONDITIONING",
         "STRING",
+        "INT",
+        "INT",
     )
     RETURN_NAMES = (
         "model",
         "clip",
         "positive",
         "negative",
-        "string"
+        "string",
+        "width",
+        "height",
     )
     FUNCTION = "doit"
 
@@ -256,11 +260,12 @@ class WildcardDivide:
             orientation = "vertical"
         else:
             orientation = "horizontal"
-        width = kwargs["width"]
-        height = kwargs["height"]
+        width = options.get("width", kwargs["width"])
+        height = options.get("height", kwargs["height"])
+        print(f"width: {width}, height: {height}")
         overall = kwargs["overall"]
         model, positive, negative = self.process(model, positives, negative, orientation, width, height, overall)
-        return model, clip, positive, negative, populated
+        return model, clip, positive, negative, populated, width, height
 
     def process(self, model, positives, negative, orientation, width, height, overall):
         divisions = len(positives)
