@@ -109,3 +109,17 @@ This syntax allows for precise control over image segmentation:
    - `sky` is applied across the entire image
    - `blue sky` affects the top half
    - `red sky` influences the bottom half
+
+### Image Size Specification
+
+You can define the dimensions of the output image using the `opt:`_width_`x`_height_ syntax. This feature allows for dynamic image size adjustment based on the selected option.
+
+```yaml
+scene:
+  - opt:1216x832 2girls [SEP] blonde hair [SEP] black hair
+  - opt:832x1216 sky [SEP] blue sky [SEP] red sky
+```
+
+In this example, selecting the second option would result in an image with dimensions of 832x1216 pixels.
+
+To implement this functionality, ensure that you connect the width and height outputs to the empty latent image node in your workflow. This connection enables the dynamic resizing of the output based on the specified dimensions.
