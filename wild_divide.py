@@ -268,6 +268,9 @@ class WildcardDivide:
         return model, clip, positive, negative, populated, width, height
 
     def process(self, model, positives, negative, orientation, width, height, overall):
+        if model.model.model_type.name == "FLUX":
+            return model, positives[0], negative
+
         divisions = len(positives)
         if divisions == 1:
             overall = False
