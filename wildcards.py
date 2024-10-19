@@ -103,6 +103,12 @@ def process_comment_out(text):
 def weighted_random_choice(items):
     weighted_items = []
     total_weight = 0.0
+    num_choices = 1
+
+    if len(items) > 0:
+        r = re.match(r"^ *([0-9]+)~([0-9]+) *$", items[0])
+        if r is not None:
+            num_choices = random.randint(int(r.group(1)), int(r.group(2)))
 
     for item in items:
         parts = item.split(",", 1)  # split on first comma
@@ -116,15 +122,25 @@ def weighted_random_choice(items):
         total_weight += weight
         weighted_items.append((weight, content))
 
-    r = random.uniform(0.0, total_weight)
-    current_weight = 0.0
+    choices = []
+    available_items = weighted_items.copy()
+    for _ in range(min(num_choices, len(weighted_items))):
+        r = random.uniform(0.0, total_weight)
+        current_weight = 0.0
 
-    for weight, content in weighted_items:
-        current_weight += weight
-        if r <= current_weight:
-            return content
+        for i, (weight, content) in enumerate(available_items):
+            current_weight += weight
+            if r <= current_weight:
+                choices.append(content)
+                available_items.pop(i)
+                break
 
-    return weighted_items[-1][1]
+        total_weight = sum(weight for weight, _ in available_items)
+
+    if len(choices) == 0:
+        choices = [""]
+
+    return ",".join(choices)
 
 
 def process(text, seed=None):
@@ -648,3 +664,4 @@ def wildcard_load():
             print(f"[WildDivide] Failed to load custom wildcards directory. {e}")
 
         print(f"[WildDivide] Wildcards loading done.")
+
