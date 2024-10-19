@@ -104,13 +104,15 @@ def weighted_random_choice(items):
     weighted_items = []
     total_weight = 0.0
     num_choices = 1
+    start_index = 0
 
     if len(items) > 0:
         r = re.match(r"^ *([0-9]+)~([0-9]+) *$", items[0])
         if r is not None:
             num_choices = random.randint(int(r.group(1)), int(r.group(2)))
+            start_index = 1
 
-    for item in items:
+    for item in items[start_index:]:
         parts = item.split(",", 1)  # split on first comma
         if is_numeric_string(parts[0].strip()):
             weight = float(parts[0].strip())
