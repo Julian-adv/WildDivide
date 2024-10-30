@@ -5,7 +5,7 @@ import { api } from "../../scripts/api.js";
 // let refresh_btn2 = document.querySelector(
 //   'button[title="Refresh widgets in nodes to find new models or files"]'
 // );
-let refresh_btn3 = document.querySelector("#pv_id_9_content > div > div > span.p-buttongroup.p-component.flex.flex-nowrap > button")
+let refresh_btn3 = document.querySelector("#pv_id_10_content > div > div > span.p-buttongroup.p-component.flex.flex-nowrap > button")
 
 // let orig = refresh_btn.onclick;
 
