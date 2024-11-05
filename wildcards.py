@@ -267,6 +267,12 @@ def process(text, seed=None):
                 pattern, replacement = item[2:].split("/", 1)
                 if not re.search(pattern, prefix, re.IGNORECASE):
                     always_items.append(replacement if replacement is not None else "")
+            elif item.startswith("=/"):
+                pattern, replacement = item[2:].split("/", 1)
+                if re.search(pattern, prefix, re.IGNORECASE):
+                    conditional_items.append(replacement if replacement is not None else "")
+                else:
+                    always_items.append(replacement if replacement is not None else "")
             elif item.startswith("/!"):
                 pattern, replacement = item[2:].split("/", 1)
                 if not re.search(pattern, prefix, re.IGNORECASE):
