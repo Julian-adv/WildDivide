@@ -250,44 +250,52 @@ def process(text, seed=None):
         return replaced_string, replacements_found
 
     def regexp_or_weighted_choice(items, prefix):
-        always_items = []
-        conditional_items = []
+        candidates = []
+        exclusive_candidates = []
         for item in items:
             if item is None or not isinstance(item, str):
-                always_items.append("")
+                candidates.append("")
             elif item.startswith("/"):
                 pattern, replacement = item[1:].split("/", 1)
-                if re.search(pattern, prefix, re.IGNORECASE):
-                    conditional_items.append(replacement if replacement is not None else "")
-            elif item.startswith("+/"):
-                pattern, replacement = item[2:].split("/", 1)
-                if re.search(pattern, prefix, re.IGNORECASE):
-                    always_items.append(replacement if replacement is not None else "")
-            elif item.startswith("-/"):
-                pattern, replacement = item[2:].split("/", 1)
-                if not re.search(pattern, prefix, re.IGNORECASE):
-                    always_items.append(replacement if replacement is not None else "")
-            elif item.startswith("=/"):
-                pattern, replacement = item[2:].split("/", 1)
-                if re.search(pattern, prefix, re.IGNORECASE):
-                    conditional_items.append(replacement if replacement is not None else "")
+                if replacement is None:
+                    replacement = ""
+                exclusive = False
+                exclusive_else = False
+                if replacement.startswith("="):
+                    replacement = replacement[1:]
+                    exclusive = True
+                    if replacement.startswith("~"):
+                        replacement = replacement[1:]
+                        exclusive_else = True
+
+                replacement = replacement.strip()
+                if "!" in replacement:
+                    match, not_match = replacement.split("!", 1)
                 else:
-                    always_items.append(replacement if replacement is not None else "")
-            elif item.startswith("/!"):
-                pattern, replacement = item[2:].split("/", 1)
-                if not re.search(pattern, prefix, re.IGNORECASE):
-                    conditional_items.append(replacement if replacement is not None else "")
-            elif item.startswith("+/!"):
-                pattern, replacement = item[3:].split("/", 1)
-                if not re.search(pattern, prefix, re.IGNORECASE):
-                    always_items.append(replacement if replacement is not None else "")
+                    match = replacement
+                    not_match = None
+
+                if re.search(pattern, prefix, re.IGNORECASE):
+                    if exclusive:
+                        exclusive_candidates.append(match)
+                    else:
+                        candidates.append(match)
+                else:
+                    if exclusive_else:
+                        candidates.append(match)
+                    else:
+                        if not_match is not None:
+                            if exclusive:
+                                exclusive_candidates.append(not_match)
+                            else:
+                                candidates.append(not_match)
             else:
-                always_items.append(item)
-        if len(conditional_items) > 0:
-            return weighted_random_choice(conditional_items)
-        if len(always_items) == 0:
+                candidates.append(item)
+        if len(exclusive_candidates) > 0:
+            return weighted_random_choice(exclusive_candidates)
+        if len(candidates) == 0:
             return ""
-        return weighted_random_choice(always_items)
+        return weighted_random_choice(candidates)
 
     def replace_wildcard(string):
         pattern = r"__([\w.\-+/*\\]+)__"
