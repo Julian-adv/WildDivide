@@ -30,9 +30,10 @@ hair:
   - {4::blonde|5::black|1::red}
 ```
 
-### Pattern-based Child Selection
+### Pattern-based Selection
 
-Lines beginning with `/` are selected when the pattern matches the prompt up to that point. For example:
+Lines that start with `/` are pattern matchers. These are selected when the pattern matches
+the previously generated prompt. Here's an example:
 
 ```yaml
 outfit:
@@ -45,10 +46,26 @@ legs:
   - bare feet
 ```
 
-If `__outfit__` expands to `blouse, skirt` (with a 1/3 probability), `__legs__` will subsequently expand to `stockings` because the `/skirt/` pattern matches.
-In cases where no pattern matches (e.g., when `swimsuit` is selected), the default option `bare feet` would be chosen.
+Here's how the pattern matching works:
 
-Lines starting with `/!` are selected when the pattern does not match the prompt. For instance:
+1. When `__outfit__` expands to `blouse, skirt` (1/3 probability):
+   - `__legs__` will only consider options matching `/skirt/` plus unmatched options
+   - Therefore, it will randomly choose between `stockings` or `bare feet`
+
+2. When `__outfit__` expands to `shirt, pants` (1/3 probability):
+   - `__legs__` will only consider options matching `/pants/` plus unmatched options
+   - Therefore, it will randomly choose between `socks` or `bare feet`
+
+3. When `__outfit__` expands to `swimsuit` (1/3 probability):
+   - Since no patterns match, only unmatched options are considered
+   - Therefore, it will select `bare feet`
+
+Note: Options without any pattern matcher (like `bare feet` in this example) are always included
+as candidates, regardless of the previous prompt.
+
+#### Pattern Alternatives
+
+When a line includes `!`, the text after `!` will be selected when the pattern does not match the prompt. For example:
 
 ```yaml
 outfit:
@@ -56,13 +73,14 @@ outfit:
   - dress
   - swimsuit
 legs:
-  - /!swimsuit/ stockings
-  - bare feet
+  - /swimsuit/ bare feet ! stockings
 ```
 
-Here, `stockings` would be selected for any outfit that doesn't include `swimsuit` (i.e., `blouse, skirt` or `dress`).
+In this example, `stockings` will be selected when the outfit doesn't contain `swimsuit` (i.e., when `blouse, skirt` or `dress` is selected). Conversely, if `swimsuit` is selected, `bare feet` will be chosen.
 
-Lines starting with `+/` (or `+/!`) add the corresponding option to the list of candidates when the pattern matches (or doesn't match) the prompt, rather than replacing the existing options. For example:
+#### Exclusive Pattern Matching
+
+When a pattern ends with `=`, it becomes an exclusive pattern that will remove all non-matching options from consideration. For example:
 
 ```yaml
 outfit:
@@ -70,11 +88,51 @@ outfit:
   - dress
   - swimsuit
 legs:
-  - +/skirt/ stockings
+  - /skirt/= stockings
   - bare feet
 ```
 
-In this scenario, if `__outfit__` expands to `blouse, skirt` (with a 1/3 probability), the `/skirt/` pattern will match. Consequently, `stockings` will be added to the list of candidates for `__legs__`, resulting in two options: `stockings` and `bare feet`. The final selection will then be made randomly from these two options, each with an equal probability.
+In this example:
+- When `__outfit__` selects `blouse, skirt` (1/3 probability):
+  - The `/skirt/=` pattern matches
+  - Due to the `=` suffix, all non-matching options (in this case, `bare feet`) are excluded
+  - Therefore, `stockings` will be selected with 100% probability
+
+- When `__outfit__` selects either `dress` or `swimsuit`:
+  - The `/skirt/=` pattern doesn't match
+  - Only the non-pattern option `bare feet` remains available
+  - Therefore, `bare feet` will be selected with 100% probability
+
+#### Pattern Matching with Conditional Exclusion
+
+The `=~` suffix creates a sophisticated pattern matching rule that combines conditional exclusion with fallback behavior. When a pattern ends with `=~`, it implements the following logic:
+
+```yaml
+outfit:
+  - blouse, skirt
+  - dress
+  - swimsuit
+legs:
+  - /skirt/=~ stockings
+  - bare feet
+  - socks
+```
+
+This operates in two distinct modes:
+
+1. **When Pattern Matches:**
+   If `__outfit__` contains `skirt` (probability: 1/3):
+   - The `/skirt/=~` pattern activates
+   - All non-matching options (`bare feet`, `socks`) are excluded
+   - `stockings` is selected with 100% probability
+
+2. **When Pattern Fails:**
+   If "skirt" is not present in `__outfit__`:
+   - The pattern-matched option (`stockings`) remains in the candidate pool
+   - All options become eligible for selection
+   - Random selection occurs between `stockings`, `bare feet`, and `socks`
+
+This mechanism provides a elegant way to enforce specific combinations while maintaining flexibility when conditions aren't met.
 
 ### Split region
 
