@@ -145,7 +145,7 @@ def weighted_random_choice(items):
     return ",".join(choices)
 
 
-def process(text, seed=None):
+def process(text, seed=None, kwargs=None):
     text = process_comment_out(text)
 
     if seed is not None:
@@ -249,7 +249,12 @@ def process(text, seed=None):
 
         return replaced_string, replacements_found
 
-    def regexp_or_weighted_choice(items, prefix):
+    def regexp_or_weighted_choice(items, prefix, keyword):
+        if kwargs is not None and keyword in kwargs:
+            if kwargs[keyword] == "disabled":
+                return ""
+            elif kwargs[keyword] != "random":
+                return kwargs[keyword]
         candidates = []
         exclusive_candidates = []
         for item in items:
@@ -308,8 +313,7 @@ def process(text, seed=None):
             keyword = match_str.lower()
             keyword = wildcard_normalize(keyword)
             if keyword in local_wildcard_dict:
-                # replacement = random_gen.choice(local_wildcard_dict[keyword])
-                replacement = regexp_or_weighted_choice(local_wildcard_dict[keyword], string[:match.start()])
+                replacement = regexp_or_weighted_choice(local_wildcard_dict[keyword], string[:match.start()], keyword[2:])
                 replacements_found = True
                 string = string.replace(f"__{match_str}__", replacement, 1)
             elif "*" in keyword:
@@ -322,7 +326,7 @@ def process(text, seed=None):
                         found = True
 
                 if found:
-                    replacement = regexp_or_weighted_choice(total_patterns, string[:match.start()])
+                    replacement = regexp_or_weighted_choice(total_patterns, string[:match.start()], keyword[2:])
                     replacements_found = True
                     string = string.replace(f"__{match_str}__", replacement, 1)
             elif "/" not in keyword:

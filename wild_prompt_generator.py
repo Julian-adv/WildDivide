@@ -26,7 +26,7 @@ class WildPromptGenerator:
     FUNCTION = "generate_prompt"
 
     def generate_prompt(self, **kwargs):
-        prompt = wildcards.process("__m/template__", kwargs["seed"])
+        prompt = wildcards.process("__m/template__", kwargs["seed"], kwargs)
         return (prompt,)
 
 
