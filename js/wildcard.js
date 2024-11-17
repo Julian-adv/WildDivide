@@ -1,5 +1,6 @@
 import { ComfyApp, app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
+import { refresh_wildcards } from "./wild_prompt_generator.js";
 
 // let refresh_btn = document.getElementById("comfy-refresh-button");
 // let refresh_btn2 = document.querySelector(
@@ -19,6 +20,8 @@ let refresh_btn3 = document.querySelector("#pv_id_10_content > div > div > span.
 // });
 
 refresh_btn3.addEventListener("click", function () {
-  api.fetchApi("/wilddivide/refresh");
+  api.fetchApi("/wilddivide/refresh").then(() => {
+    refresh_wildcards();
+  });
 });
 

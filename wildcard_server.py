@@ -14,6 +14,10 @@ async def wildcards_list(request):
     data = {"data": wildcards.get_wildcard_list()}
     return web.json_response(data)
 
+@PromptServer.instance.routes.get("/wilddivide/wildcards/dict")
+async def wildcards_dict(request):
+    data = {"data": wildcards.get_wildcard_dict()}
+    return web.json_response(data)
 
 @PromptServer.instance.routes.post("/wilddivide/wildcards")
 async def populate_wildcards(request):
