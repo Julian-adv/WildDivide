@@ -17,11 +17,15 @@ app.registerExtension({
     nodeCreated(node, app) {
         if (node.comfyClass == "WildPromptGenerator") {
             generator_node = node;
-            console.log(wildcards_dict);
-            console.log(node.widgets);
             setup_node(node);
         }
     },
+    async refreshComboInNodes(defs) {
+        console.log("Wild prompt generator refreshComboInNodes");
+        api.fetchApi("/wilddivide/refresh").then(() => {
+            refresh_wildcards();
+        });
+    }
 });
 
 // Called when the refresh button is clicked.
@@ -29,6 +33,7 @@ export async function refresh_wildcards() {
     await load_wildcards();
     if (generator_node) {
         setup_node(generator_node);
+        console.log("Wild prompt generator refreshed");
     }
 }
 
@@ -36,16 +41,26 @@ export async function refresh_wildcards() {
 function setup_node(node) {
     let copied_keys = Object.keys(wildcards_dict).filter((key) => key.startsWith("m/"));
 
+    // Get current values
+    let current_values = {};
+    node.widgets.forEach((widget) => current_values[widget.name] = widget.value);
+
     // Remove widgets except first 2
     node.widgets = node.widgets.slice(0, 2);
-    let nodeSize = node.size;
+    let [width, height] = node.size;
     
     for (const key of copied_keys) {
         let widgetName = key.substring(2); // Remove "m/" prefix
-        node.addWidget("combo", widgetName, "disabled", () => {}, {
+        let values = ["disabled", "random", ...wildcards_dict[key]];
+        // Preserve current value
+        let value = current_values[widgetName];
+        if (!values.includes(value)) {
+            value = "disabled";
+        }
+        node.addWidget("combo", widgetName, value, () => {}, {
             property: widgetName,
-            values: ["disabled", "random", ...wildcards_dict[key]],
+            values: values,
         });
     }
-    node.size[0] = nodeSize[0];
+    node.size[0] = width;
 }

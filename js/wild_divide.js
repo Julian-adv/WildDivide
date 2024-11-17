@@ -120,4 +120,10 @@ app.registerExtension({
       });
     }
   },
+  async refreshComboInNodes(defs) {
+    console.log("Wild divide refreshComboInNodes");
+    api.fetchApi("/wilddivide/refresh").then(() => {
+      load_wildcards();
+    });
+  }
 });
