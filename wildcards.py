@@ -10,6 +10,7 @@ import threading
 
 wildcards_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "wildcards"))
 default_wildcards_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "wildcards"))
+WILDCARD_DICT_FILE = os.path.join(default_wildcards_path, "m.yaml")
 
 RE_WildCardQuantifier = re.compile(r"(?P<quantifier>\d+)#__(?P<keyword>[\w.\-+/*\\]+)__", re.IGNORECASE)
 wildcard_lock = threading.Lock()
@@ -366,6 +367,33 @@ def process(text, seed=None, kwargs=None):
 
     return text
 
+def add_slot(name, values):
+    local_wildcard_dict = get_wildcard_dict()
+    name = name.strip()
+    if name == "":
+        return
+    name = wildcard_normalize(name)
+    name = f"m/{name}"
+    values = values.strip()
+    values = values.split("\n")
+    values = [x.strip() for x in values]
+
+    local_wildcard_dict[name] = values
+    m_wildcard_dict = {k: v for k, v in local_wildcard_dict.items() if k.startswith("m/")}
+    m_wildcard_dict_new = {}
+    for k, v in m_wildcard_dict.items():
+        if "/" in k:
+            keys = k.split("/")
+            if keys[0] not in m_wildcard_dict_new:
+                m_wildcard_dict_new[keys[0]] = {}
+            m_wildcard_dict_new[keys[0]][keys[1]] = v
+        else:
+            m_wildcard_dict_new[k] = v
+    save_wildcard_dict(m_wildcard_dict_new)
+
+def save_wildcard_dict(wildcard_dict):
+    with open(WILDCARD_DICT_FILE, "w") as f:
+        yaml.dump(wildcard_dict, f)
 
 def is_numeric_string(input_str):
     return re.match(r"^-?\d+(\.\d+)?$", input_str) is not None

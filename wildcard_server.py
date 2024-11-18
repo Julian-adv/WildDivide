@@ -25,6 +25,11 @@ async def populate_wildcards(request):
     populated = wildcards.process(data["text"], data.get("seed", None))
     return web.json_response({"text": populated})
 
+@PromptServer.instance.routes.post("/wilddivide/add_slot")
+async def add_slot(request):
+    data = await request.json()
+    wildcards.add_slot(data["name"], data["values"])
+    return web.json_response({"status": "success"})
 
 def onprompt_populate_wildcards(json_data):
     prompt = json_data["prompt"]
