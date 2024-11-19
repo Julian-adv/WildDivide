@@ -374,12 +374,24 @@ def add_slot(name, values):
         return
     name = wildcard_normalize(name)
     name = f"m/{name}"
-    values = values.strip()
-    values = values.split("\n")
-    values = [x.strip() for x in values]
+    values = values.removeprefix("- ").split("\n- ")
+    values = [x for x in values]
 
     local_wildcard_dict[name] = values
-    m_wildcard_dict = {k: v for k, v in local_wildcard_dict.items() if k.startswith("m/")}
+    save_wildcard_dict(local_wildcard_dict)
+
+def delete_slot(name):
+    local_wildcard_dict = get_wildcard_dict()
+    name = name.strip()
+    if name == "":
+        return
+    name = wildcard_normalize(name)
+    name = f"m/{name}"
+    del local_wildcard_dict[name]
+    save_wildcard_dict(local_wildcard_dict)
+
+def save_wildcard_dict(wildcard_dict):
+    m_wildcard_dict = {k: v for k, v in wildcard_dict.items() if k.startswith("m/")}
     m_wildcard_dict_new = {}
     for k, v in m_wildcard_dict.items():
         if "/" in k:
@@ -389,11 +401,8 @@ def add_slot(name, values):
             m_wildcard_dict_new[keys[0]][keys[1]] = v
         else:
             m_wildcard_dict_new[k] = v
-    save_wildcard_dict(m_wildcard_dict_new)
-
-def save_wildcard_dict(wildcard_dict):
     with open(WILDCARD_DICT_FILE, "w") as f:
-        yaml.dump(wildcard_dict, f)
+        yaml.dump(m_wildcard_dict_new, f)
 
 def is_numeric_string(input_str):
     return re.match(r"^-?\d+(\.\d+)?$", input_str) is not None
