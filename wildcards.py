@@ -154,6 +154,7 @@ def process(text, seed=None, kwargs=None):
     random_gen = np.random.default_rng(seed)
 
     local_wildcard_dict = get_wildcard_dict()
+    last_generated = {}
 
     def replace_options(string):
         replacements_found = False
@@ -255,6 +256,7 @@ def process(text, seed=None, kwargs=None):
             if kwargs[keyword] == "disabled":
                 return ""
             elif kwargs[keyword] != "random":
+                last_generated[keyword] = kwargs[keyword]
                 return kwargs[keyword]
         candidates = []
         exclusive_candidates = []
@@ -298,10 +300,13 @@ def process(text, seed=None, kwargs=None):
             else:
                 candidates.append(item)
         if len(exclusive_candidates) > 0:
-            return weighted_random_choice(exclusive_candidates)
+            last_generated[keyword] = weighted_random_choice(exclusive_candidates)
+            return last_generated[keyword]
         if len(candidates) == 0:
+            last_generated[keyword] = ""
             return ""
-        return weighted_random_choice(candidates)
+        last_generated[keyword] = weighted_random_choice(candidates)
+        return last_generated[keyword]
 
     def replace_wildcard(string):
         pattern = r"__([\w.\-+/*\\]+)__"
@@ -365,7 +370,7 @@ def process(text, seed=None, kwargs=None):
         text, is_replaced2 = replace_wildcard(pass1)
         stop_unwrap = not is_replaced1 and not is_replaced2
 
-    return text
+    return text, last_generated
 
 def add_slot(name, values):
     local_wildcard_dict = get_wildcard_dict()
@@ -602,7 +607,7 @@ def process_with_loras(wildcard_opt, model, clip, clip_encoder=None, seed=None, 
 
     lora_name_cache = []
 
-    pass1_result = process(wildcard_opt, seed)
+    pass1_result, last_generated = process(wildcard_opt, seed)
     pass1_result, options = extract_options(pass1_result)
     pass1_parts = pass1_result.split("[SEP]")
     result = []

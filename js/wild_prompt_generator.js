@@ -44,8 +44,8 @@ function setup_node(node) {
     let copied_keys = Object.keys(wildcards_dict).filter((key) => key.startsWith("m/"));
 
     // Get current values
-    let current_values = {};
-    node.widgets.forEach((widget) => current_values[widget.name] = widget.value);
+    let old_values = {};
+    node.widgets.forEach((widget) => old_values[widget.name] = widget.value);
 
     // Remove widgets except first 2
     node.widgets = node.widgets.slice(0, 2);
@@ -54,10 +54,24 @@ function setup_node(node) {
     for (const key of copied_keys) {
         let widgetName = key.substring(2); // Remove "m/" prefix
         let values = ["disabled", "random", ...wildcards_dict[key]];
-        // Preserve current value
-        let value = current_values[widgetName];
-        if (!values.includes(value)) {
-            value = "disabled";
+        // Preserve old value
+        let value = old_values[widgetName];
+        if (value == null || value == undefined) {
+            value = "random";
+        } else if (!values.includes(value)) {
+            // Try similar value
+            let found = false;
+            for (const similar_value of wildcards_dict[key]) {
+                if (similar_value.toLowerCase().includes(value.toLowerCase()) ||
+                    value.toLowerCase().includes(similar_value.toLowerCase())) {
+                    value = similar_value;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                value = "random";
+            }
         }
         node.addWidget("combo", widgetName, value, () => {}, {
             property: widgetName,
@@ -65,6 +79,12 @@ function setup_node(node) {
         });
     }
 
+    node.addWidget("button", "Last generated", null, () => {
+        setLastGenerated(node);
+    });
+    node.addWidget("button", "All random", null, () => {
+        setAllRandom(node);
+    });
     node.addWidget("button", "⚙️ Manage", null, () => {
         if (!dialog) {
             dialog = setup_dialog();
@@ -72,6 +92,23 @@ function setup_node(node) {
         show_dialog(dialog);
     });
     node.size[0] = width;
+}
+
+async function setLastGenerated(node) {
+    let res = await api.fetchApi("/wilddivide/last_generated");
+    let data = await res.json();
+    let last_generated = data.data;
+    for (const widget of node.widgets.slice(2)) {
+        if (widget.name in last_generated) {
+            widget.value = last_generated[widget.name];
+        }
+    }
+}
+
+function setAllRandom(node) {
+    for (const widget of node.widgets.slice(2)) {
+        widget.value = "random";
+    }
 }
 
 function setup_dialog() {
@@ -205,7 +242,7 @@ function show_dialog(dialog) {
     const editSlotNames = createSelect();
     editSlotNames.onchange = function () {
         const slotName = 'm/' + editSlotNames.value;
-        editSlotValues.value = wildcards_dict[slotName].join("\n- ");
+        editSlotValues.value = '- ' + wildcards_dict[slotName].join("\n- ");
     };
     const editSlotLbl = document.createElement("label");
     Object.assign(editSlotLbl.style, {

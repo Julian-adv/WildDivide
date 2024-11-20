@@ -1,5 +1,6 @@
 from server import PromptServer
 from . import wildcards
+from . import wild_prompt_generator
 from aiohttp import web
 
 
@@ -36,6 +37,11 @@ async def delete_slot(request):
     data = await request.json()
     wildcards.delete_slot(data["name"])
     return web.json_response({"status": "success"})
+
+@PromptServer.instance.routes.get("/wilddivide/last_generated")
+async def last_generated(request):
+    data = {"data": wild_prompt_generator.get_last_generated()}
+    return web.json_response(data)
 
 def onprompt_populate_wildcards(json_data):
     prompt = json_data["prompt"]

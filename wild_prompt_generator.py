@@ -1,5 +1,7 @@
 from . import wildcards
 
+last_generated = {}
+
 class WildPromptGenerator:
     @classmethod
     def INPUT_TYPES(cls):
@@ -26,9 +28,13 @@ class WildPromptGenerator:
     FUNCTION = "generate_prompt"
 
     def generate_prompt(self, **kwargs):
-        prompt = wildcards.process("__m/template__", kwargs["seed"], kwargs)
+        global last_generated
+        prompt, last_generated = wildcards.process("__m/template__", kwargs["seed"], kwargs)
         return (prompt,)
 
+def get_last_generated():
+    global last_generated
+    return last_generated
 
 NODE_CLASS_MAPPINGS = { "WildPromptGenerator": WildPromptGenerator }
 NODE_DISPLAY_NAME_MAPPINGS = { "WildPromptGenerator": "Wild Prompt Generator" }
