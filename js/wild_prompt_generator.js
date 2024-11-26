@@ -50,6 +50,28 @@ function setValueColor(el, value) {
     }
 }
 
+function calculateContextMenuPosition(x, y, element, contextMenu) {
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    const rect = element.getBoundingClientRect();
+    let nx = rect.left;
+    let ny = rect.bottom;
+    const contextMenuWidth = contextMenu.offsetWidth;
+    const contextMenuHeight = contextMenu.offsetHeight;
+    if (contextMenuWidth > windowWidth - 50) {
+        nx = 50;
+    } else if (nx + contextMenuWidth > windowWidth - 50) {
+        nx = windowWidth - contextMenuWidth - 50;
+    }
+    if (nx < 50) {
+        nx = x;
+    }
+    if (ny + contextMenuHeight > windowHeight - 50) {
+        ny = rect.top - contextMenuHeight;
+    }
+    return [nx, ny];
+}
+
 // Sets up the node with the wildcards.
 function setup_node(node) {
     let copied_keys = Object.keys(wildcards_dict).filter((key) => key.startsWith("m/"));
@@ -143,8 +165,9 @@ function setup_node(node) {
         selectEl.addEventListener('mousedown', (e) => {
             isMouseDown = true;
             contextMenu.style.display = "block";
-            contextMenu.style.left = `${e.clientX}px`;
-            contextMenu.style.top = `${e.clientY}px`;
+            const [x, y] = calculateContextMenuPosition(e.clientX, e.clientY, selectEl, contextMenu);
+            contextMenu.style.left = `${x}px`;
+            contextMenu.style.top = `${y}px`;
         });
         document.addEventListener('click', (e) => {
             if (!isMouseDown) {
