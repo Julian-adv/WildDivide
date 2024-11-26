@@ -39,6 +39,17 @@ export async function refresh_wildcards() {
 
 let dialog = null;
 
+function setValueColor(el, value) {
+    el.textContent = value;
+    if (value == 'disabled') {
+        el.style.color = "var(--p-form-field-disabled-color)";
+    } else if (value == 'random') {
+        el.style.color = "var(--p-blue-400)";
+    } else {
+        el.style.color = "var(--p-surface-0)";
+    }
+}
+
 // Sets up the node with the wildcards.
 function setup_node(node) {
     let copied_keys = Object.keys(wildcards_dict).filter((key) => key.startsWith("m/"));
@@ -73,11 +84,137 @@ function setup_node(node) {
                 value = "random";
             }
         }
-        node.addWidget("combo", widgetName, value, () => {}, {
-            property: widgetName,
-            values: values,
+
+        // Create widget container
+        const inputContainer = document.createElement("div");
+        Object.assign(inputContainer.style, {
+            flexDirection: "row",
+            fontSize: "12px",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "10px",
+            border: "1px solid var(--p-surface-500)",
+            borderRadius: "8px",
+            padding: "0px 8px",
         });
+
+        // Create label
+        const inputLbl = document.createElement("label");
+        inputLbl.textContent = widgetName;
+        Object.assign(inputLbl.style, {
+            color: "var(--p-form-field-float-label-color)",
+        });
+        inputContainer.append(inputLbl);
+
+        // Create select element
+        const selectEl = document.createElement("span");
+        Object.assign(selectEl.style, {
+            width: "auto",
+            minWidth: "100px",
+            fontSize: "12px",
+            padding: "0px",
+            margin: "0px",
+            border: "none",
+            outline: "none",
+            backgroundColor: "transparent",
+            textAlignLast: "right",
+            cursor: "pointer",
+            overflow: "clip",
+            textWrap: "nowrap",
+            textOverflow: "ellipsis",
+            color: "var(--p-surface-0)",
+        });
+        setValueColor(selectEl, value);
+        inputContainer.append(selectEl);
+
+        // Create context menu
+        const contextMenu = document.createElement("div");
+        Object.assign(contextMenu.style, {
+            display: "none",
+            position: "absolute",
+            backgroundColor: "var(--p-form-field-background)",
+            minWidth: "100px",
+            boxShadow: "0px 8px 16px 0px rgba(0,0,0,0.2)",
+            zIndex: "100",
+            padding: "2px",
+        });
+
+        let isMouseDown = false;
+        selectEl.addEventListener('mousedown', (e) => {
+            isMouseDown = true;
+            contextMenu.style.display = "block";
+            contextMenu.style.left = `${e.clientX}px`;
+            contextMenu.style.top = `${e.clientY}px`;
+        });
+        document.addEventListener('click', (e) => {
+            if (!isMouseDown) {
+                contextMenu.style.display = "none";
+            }
+            isMouseDown = false
+        });
+
+        // Create menu items
+        for (const v of values) {
+            let option = document.createElement("a");
+            option.href = "#";
+            Object.assign(option.style, {
+                backgroundColor: "var(--p-form-field-background)",
+                display: "block",
+                padding: "5px",
+                color: "var(--p-surface-0)",
+                textDecoration: "none",
+            });
+            setValueColor(option, v);
+            option.addEventListener('mouseover', () => {
+                option.style.backgroundColor = "var(--p-form-field-hover-border-color)";
+            });
+            option.addEventListener('mouseout', () => {
+                option.style.backgroundColor = "var(--p-form-field-background)";
+            });
+            option.addEventListener('click', () => {
+                setValueColor(selectEl, v);
+                contextMenu.style.display = "none";
+            });
+            contextMenu.append(option);
+        }
+        document.body.appendChild(contextMenu);
+
+        const widget = node.addDOMWidget(widgetName, 'mycombo', inputContainer, {
+            getValue() {
+                return selectEl.textContent;
+            },
+            setValue(v) {
+                setValueColor(selectEl, v);
+            },
+            getHeight() {
+                return 25;
+            },
+            onDraw(w) {
+                // These are needed to be here
+                Object.assign(w.element.style, {
+                    display: "flex",
+                    height: "22px",
+                });
+            }
+        });
+        widget.inputContainer = inputContainer;
+        widget.onRemove = () => {
+            inputContainer.remove();
+        };
     }
+
+    // To prevent widgets overlapping
+    node.addDOMWidget("space", 'space', document.createElement("div"), {
+        getHeight() {
+            return 25;
+        },
+        onDraw(w) {
+            Object.assign(w.element.style, {
+                display: "flex",
+                height: "22px",
+            });
+        }
+    });
 
     node.addWidget("button", "Last generated", null, () => {
         setLastGenerated(node);
@@ -94,6 +231,7 @@ function setup_node(node) {
     node.size[0] = width;
 }
 
+// Sets the last generated values to the widgets.
 async function setLastGenerated(node) {
     let res = await api.fetchApi("/wilddivide/last_generated");
     let data = await res.json();
@@ -105,12 +243,14 @@ async function setLastGenerated(node) {
     }
 }
 
+// Sets all widgets to random.
 function setAllRandom(node) {
     for (const widget of node.widgets.slice(2)) {
         widget.value = "random";
     }
 }
 
+// Sets up the dialog.
 function setup_dialog() {
     const dialog = new app.ui.dialog.constructor();
     dialog.element.classList.add("comfy-settings");
