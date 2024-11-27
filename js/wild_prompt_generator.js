@@ -280,8 +280,8 @@ function setup_node(node) {
     node.addWidget("button", "All random", null, () => {
         setAllRandom(node);
     });
-    node.addWidget("button", "⚙️ Manage", null, () => {
-        setup_and_show_dialog("Add");
+    node.addWidget("button", "➕ Add slot", null, () => {
+        setup_and_show_add_dialog();
     });
     node.size[0] = width;
 }
@@ -305,289 +305,22 @@ function setAllRandom(node) {
     }
 }
 
-function setup_and_show_dialog(tab) {
-    if (!dialog) {
-        dialog = setup_dialog();
-    }
-    show_dialog(dialog, tab);
-}
-
-// Sets up the dialog.
-function setup_dialog() {
-    const dialog = new app.ui.dialog.constructor();
-    dialog.element.classList.add("comfy-settings");
-    Object.assign(dialog.element.style, {
-        flexDirection: "column",
-    });
-
-    const closeButton = dialog.element.querySelector("button");
-    Object.assign(closeButton.style, {
-        padding: "2px 10px",
-        marginTop: "0",
-    });
-    closeButton.textContent = "Cancel";
-    const buttonContainer = document.createElement("div");
-    Object.assign(buttonContainer.style, {
-        display: "flex",
-        justifyContent: "space-evenly",
-        alignItems: "end"
-    });
-    dialog.element.append(buttonContainer);
-
-    buttonContainer.append(closeButton);
-
-    return dialog;
-}
-
-let editSlotNames = null;
-let editSlotValues = null;
-
-function show_dialog(dialog, tab) {
-    const addContainer = document.createElement("div");
-    Object.assign(addContainer.style, {
-        display: "none",
-        gridTemplateColumns: "auto 1fr",
-        gap: "10px",
-    });
-
-    const addSlotName = document.createElement("input");
-    const nameLbl = document.createElement("label");
-    Object.assign(nameLbl.style, {
-        textAlign: "right",
-    });
-    addSlotName.value = "";
-    nameLbl.textContent = "Slot Name:";
-    addContainer.append(nameLbl, addSlotName);
-
-    const addSlotValues = document.createElement("textarea");
-    addSlotValues.classList.add("comfy-multiline-input");
-    Object.assign(addSlotValues.style, {
-        width: "300px",
-        height: "300px",
-    });
-    const valueLbl = document.createElement("label");
-    Object.assign(valueLbl.style, {
-        textAlign: "right",
-    });
-    addSlotValues.value = "";
-    valueLbl.textContent = "Values:";
-
-    const addSaveButton = document.createElement("button");
-    Object.assign(addSaveButton.style, {
-        padding: "2px 10px",
-        marginTop: "0",
-        backgroundColor: "var(--primary-bg)",
-        gridColumn: "1 / 3",
-        justifySelf: "center",
-    });
-    addSaveButton.textContent = "Save";
-    addSaveButton.onclick = async function () {
-        if (addSlotName.value.trim() != "") {
-            await api.fetchApi("/wilddivide/add_slot", {
-                method: "POST",
-                body: JSON.stringify({
-                    name: addSlotName.value,
-                    values: addSlotValues.value,
-                }),
-            });
-            await refresh_wildcards();
-        }
-
-        dialog.close();
-    };
-    const addHelpText = document.createElement("p");
-    Object.assign(addHelpText.style, {
-        gridColumn: "1 / 3",
-    });
-    addHelpText.textContent = "Each value should start with '- ' prefix.";
-    addContainer.append(valueLbl, addSlotValues, addHelpText, addSaveButton);
-    addContainer.dataset.tab = "Add";
-
-    const removeContainer = document.createElement("div");
-    Object.assign(removeContainer.style, {
-        display: "none",
-        gridTemplateColumns: "auto 1fr",
-        gap: "10px",
-    });
-    const removeSlotLbl = document.createElement("label");
-    Object.assign(removeSlotLbl.style, {
-        textAlign: "right",
-    });
-    removeSlotLbl.textContent = "Slot Name:";
-
-    const removeSlotValues = createSelect("remove-slot-values");
-    const removeSaveButton = document.createElement("button");
-    Object.assign(removeSaveButton.style, {
-        padding: "2px 10px",
-        marginTop: "0",
-        backgroundColor: "red",
-        gridColumn: "1 / 3",
-        justifySelf: "center",
-    });
-    removeSaveButton.textContent = "Delete";
-    removeSaveButton.onclick = async function () {
-        await api.fetchApi("/wilddivide/delete_slot", {
-            method: "POST",
-            body: JSON.stringify({
-                name: removeSlotValues.value,
-            }),
-        });
-        await refresh_wildcards();
-        dialog.close();
-    };
-
-    removeContainer.append(removeSlotLbl, removeSlotValues, removeSaveButton);
-    removeContainer.dataset.tab = "Remove";
-
-    const editContainer = document.createElement("div");
-    Object.assign(editContainer.style, {
-        display: "none",
-        gridTemplateColumns: "auto 1fr",
-        gap: "10px",
-    });
-
-    editSlotNames = createSelect("edit-slot-names");
-    editSlotNames.onchange = function () {
-        const slotName = 'm/' + editSlotNames.value;
-        editSlotValues.value = '- ' + wildcards_dict[slotName].join("\n- ");
-    };
-    const editSlotLbl = document.createElement("label");
-    Object.assign(editSlotLbl.style, {
-        textAlign: "right",
-    });
-    editSlotLbl.textContent = "Slot Name:";
-    editContainer.append(editSlotLbl, editSlotNames);
-    editContainer.dataset.tab = "Edit";
-
-    editSlotValues = document.createElement("textarea");
-    editSlotValues.classList.add("comfy-multiline-input");
-    Object.assign(editSlotValues.style, {
-        width: "300px",
-        height: "300px",
-    });
-    const editSlotValueLbl = document.createElement("label");
-    Object.assign(editSlotValueLbl.style, {
-        textAlign: "right",
-    });
-    const slotName = 'm/' + editSlotNames.value;
-    editSlotValues.value = '- ' + wildcards_dict[slotName].join("\n- ");
-    editSlotValueLbl.textContent = "Values:";
-
-    const editSaveButton = document.createElement("button");
-    Object.assign(editSaveButton.style, {
-        padding: "2px 10px",
-        marginTop: "0",
-        backgroundColor: "var(--primary-bg)",
-        gridColumn: "1 / 3",
-        justifySelf: "center",
-    });
-    editSaveButton.textContent = "Save";
-    editSaveButton.onclick = async function () {
-        await api.fetchApi("/wilddivide/add_slot", {
-            method: "POST",
-            body: JSON.stringify({
-                name: editSlotNames.value,
-                values: editSlotValues.value,
-            }),
-        });
-        await refresh_wildcards();
-        dialog.close();
-    };
-
-    const editHelpText = document.createElement("p");
-    Object.assign(editHelpText.style, {
-        gridColumn: "1 / 3",
-    });
-    editHelpText.textContent = "Each value should start with '- ' prefix.";
-    editContainer.append(editSlotValueLbl, editSlotValues, editHelpText, editSaveButton);
-
-    const tabHeader = document.createElement("div");
-    Object.assign(tabHeader.style, {
-        display: "flex",
-        justifyContent: "start",
-        gap: "10px",
-        padding: "10px 0",
-    });
-    const addButton = document.createElement("button");
-    Object.assign(addButton.style, {
-        padding: "2px 10px",
-        marginTop: "0",
-        fontSize: "14px",
-        backgroundColor: "var(--primary-bg)",
-    });
-    addButton.textContent = "Add";
-    addButton.onclick = function () {
-        setActiveTab(tabHeader, "Add");
-    };
-
-    const removeButton = document.createElement("button");
-    Object.assign(removeButton.style, {
-        padding: "2px 10px",
-        marginTop: "0",
-        fontSize: "14px",
-    });
-    removeButton.textContent = "Remove";
-    removeButton.onclick = function () {
-        setActiveTab(tabHeader, "Remove");
-    };
-
-    const editButton = document.createElement("button");
-    Object.assign(editButton.style, {
-        padding: "2px 10px",
-        marginTop: "0",
-        fontSize: "14px",
-    });
-    editButton.textContent = "Edit";
-    editButton.onclick = function () {
-        setActiveTab(tabHeader, "Edit");
-    };
-
-    tabHeader.append(addButton, removeButton, editButton);
-
-
-    dialog.show("Manage Slots");
-    Object.assign(dialog.textElement.style, {
-        marginTop: "0",
-    });
-    dialog.textElement.append(tabHeader, addContainer, removeContainer, editContainer);
-    setActiveTab(tabHeader, tab);
-}
-
-function createSelect(id) {
-    const select = document.createElement("select");
-    select.id = id;
-    Object.assign(select.style, {
-        width: "300px",
-    });
-    for (const key of Object.keys(wildcards_dict).filter((key) => key.startsWith("m/"))) {
-        let option = document.createElement("option");
-        const slotName = key.substring(2);
-        option.value = slotName;
-        option.textContent = slotName;
-        select.append(option);
-    }
-    return select;
-}
-
-let activeContainer = null;
-
-function setActiveTab(tabHeader, activeTab) {
-    let container = document.querySelector(`[data-tab="${activeTab}"]`);
-    for (const tab of tabHeader.children) {
-        if (tab.textContent == activeTab) {
-            tab.style.backgroundColor = "var(--primary-bg)";
-        } else {
-            tab.style.backgroundColor = "";
-        }
-    }
-    if (activeContainer) {
-        activeContainer.style.display = "none";
-    }
-    container.style.display = "grid";
-    activeContainer = container;
-}
-
+let addDialog = null;
 let editDialog = null;
+let slotElement = null;
+let valueElements = [];
+
+function setup_and_show_add_dialog() {
+    if (!addDialog) {
+        addDialog = setup_edit_dialog();
+    }
+    show_add_dialog(addDialog);
+}
+
+function show_add_dialog(dialog) {
+    slotElement = document.createElement("input");
+    show_dialog_internal(dialog, "Add Slot", slotElement, []);
+}
 
 function setup_and_show_edit_dialog(widgetName) {
     if (!editDialog) {
@@ -596,10 +329,40 @@ function setup_and_show_edit_dialog(widgetName) {
     show_edit_dialog(editDialog, widgetName);
 }
 
-let editSlotName = null;
-let editValues = [];
-
 function setup_edit_dialog() {
+    const dialog = setup_common_dialog("Save", async function () {
+        await api.fetchApi("/wilddivide/add_slot", {
+            method: "POST",
+            body: JSON.stringify({
+                name: slotElement.value,
+                values: "- " + valueElements.map((element) => element.value).join("\n- "),
+            }),
+        });
+        await refresh_wildcards();
+        dialog.close();
+    });
+    return dialog;
+}
+
+function show_edit_dialog(dialog, widgetName) {
+    slotElement = document.createElement("select");
+    Object.assign(slotElement.style, {
+        width: "300px",
+        margin: "0",
+        padding: "3px",
+    });
+    for (const key of Object.keys(wildcards_dict).filter((key) => key.startsWith("m/"))) {
+        let option = document.createElement("option");
+        const slotName = key.substring(2);
+        option.value = slotName;
+        option.textContent = slotName;
+        slotElement.append(option);
+    }
+    slotElement.value = widgetName;
+    show_dialog_internal(dialog, "Edit Slot", slotElement, wildcards_dict[`m/${widgetName}`]);
+}
+
+function setup_common_dialog(okLabel, okCallback) {
     const dialog = new app.ui.dialog.constructor();
     dialog.element.classList.add("comfy-settings");
     Object.assign(dialog.element.style, {
@@ -607,9 +370,11 @@ function setup_edit_dialog() {
         padding: "10px",
     });
 
+    // Remove old close button
     const oldCloseButton = dialog.element.querySelector("button");
     oldCloseButton.remove();
 
+    // Close button
     const closeButton = document.createElement("button");
     Object.assign(closeButton.style, {
         fontSize: "16px",
@@ -628,6 +393,7 @@ function setup_edit_dialog() {
     };
     dialog.element.prepend(closeButton);
 
+    // Button container
     const buttonContainer = document.createElement("div");
     Object.assign(buttonContainer.style, {
         display: "flex",
@@ -635,25 +401,17 @@ function setup_edit_dialog() {
     });
     dialog.element.append(buttonContainer);
 
-    const saveButton = document.createElement("button");
-    Object.assign(saveButton.style, {
+    // OK button
+    const okButton = document.createElement("button");
+    Object.assign(okButton.style, {
         fontSize: "16px",
         backgroundColor: "var(--primary-bg)",
     });
-    saveButton.textContent = "Save";
-    saveButton.onclick = async function () {
-        await api.fetchApi("/wilddivide/add_slot", {
-            method: "POST",
-            body: JSON.stringify({
-                name: editSlotName.value,
-                values: "- " + editValues.map((element) => element.value).join("\n- "),
-            }),
-        });
-        await refresh_wildcards();
-        dialog.close();
-    };
-    buttonContainer.append(saveButton);
+    okButton.textContent = okLabel;
+    okButton.onclick = okCallback;
+    buttonContainer.append(okButton);
 
+    // Cancel button
     const cancelButton = document.createElement("button");
     Object.assign(cancelButton.style, {
         fontSize: "16px",
@@ -667,7 +425,7 @@ function setup_edit_dialog() {
     return dialog;
 }
 
-function show_edit_dialog(dialog, widgetName) {
+function show_dialog_internal(dialog, title, slotNameElement, values) {
     const container = document.createElement("div");
     Object.assign(container.style, {
         display: "grid",
@@ -677,29 +435,13 @@ function show_edit_dialog(dialog, widgetName) {
         marginTop: "10px",
     });
 
-    const editSlotLabel = document.createElement("label");
-    Object.assign(editSlotLabel.style, {
+    const slotLabel = document.createElement("label");
+    Object.assign(slotLabel.style, {
         textAlign: "right",
     });
-    editSlotLabel.textContent = "Slot  ";
+    slotLabel.textContent = "Slot  ";
 
-    editSlotName = document.createElement("select");
-    Object.assign(editSlotName.style, {
-        width: "300px",
-        margin: "0",
-        padding: "3px",
-    });
-    for (const key of Object.keys(wildcards_dict).filter((key) => key.startsWith("m/"))) {
-        let option = document.createElement("option");
-        const slotName = key.substring(2);
-        option.value = slotName;
-        option.textContent = slotName;
-        editSlotName.append(option);
-    }
-    editSlotName.value = widgetName;
-    editValues = [];
-
-    container.append(editSlotLabel, editSlotName);
+    container.append(slotLabel, slotNameElement);
 
     const marker = document.createElement("span");
     const addButton = document.createElement("button");
@@ -714,12 +456,12 @@ function show_edit_dialog(dialog, widgetName) {
     };
     container.append(marker, addButton);
 
-    const slotName = `m/${widgetName}`;
-    wildcards_dict[slotName].forEach((value) => {
+    valueElements = [];
+    values.forEach((value) => {
         add_new_value("-", value, marker);
     });
 
-    dialog.show("Edit Slot");
+    dialog.show(title);
     Object.assign(dialog.textElement.style, {
         marginTop: "0",
     });
@@ -743,7 +485,7 @@ function add_new_value(label, value, marker) {
         overflow: "hidden",
     });
     valueElement.value = value;
-    editValues.push(valueElement);
+    valueElements.push(valueElement);
 
     const adjustHeight = function () {
         valueElement.style.height = "auto";
