@@ -231,8 +231,7 @@ function setup_node(node) {
         });
         button.textContent = "✎";
         button.onclick = () => {
-            setup_and_show_dialog("Edit");
-            set_edit_values(widgetName);
+            setup_and_show_edit_dialog(widgetName);
         };
         container.append(button);
 
@@ -243,6 +242,7 @@ function setup_node(node) {
             },
             setValue(v) {
                 setValueColor(selectEl, v);
+                app.canvas.setDirty(true);
             },
             getHeight() {
                 return 25;
@@ -587,9 +587,174 @@ function setActiveTab(tabHeader, activeTab) {
     activeContainer = container;
 }
 
-function set_edit_values(widgetName) {
-    editSlotNames.value = widgetName;
-    const slotName = 'm/' + widgetName;
-    editSlotValues.value = '- ' + wildcards_dict[slotName].join("\n- ");
+let editDialog = null;
+
+function setup_and_show_edit_dialog(widgetName) {
+    if (!editDialog) {
+        editDialog = setup_edit_dialog();
+    }
+    show_edit_dialog(editDialog, widgetName);
 }
 
+let editSlotName = null;
+let editValues = [];
+
+function setup_edit_dialog() {
+    const dialog = new app.ui.dialog.constructor();
+    dialog.element.classList.add("comfy-settings");
+    Object.assign(dialog.element.style, {
+        flexDirection: "column",
+        padding: "10px",
+    });
+
+    const oldCloseButton = dialog.element.querySelector("button");
+    oldCloseButton.remove();
+
+    const closeButton = document.createElement("button");
+    Object.assign(closeButton.style, {
+        fontSize: "16px",
+        padding: "0px",
+        border: "none",
+        backgroundColor: "transparent",
+        margin: "0px",
+        width: "fit-content",
+        position: "absolute",
+        right: "8px",
+        top: "2px",
+    });
+    closeButton.textContent = "✖";
+    closeButton.onclick = function () {
+        dialog.close();
+    };
+    dialog.element.prepend(closeButton);
+
+    const buttonContainer = document.createElement("div");
+    Object.assign(buttonContainer.style, {
+        display: "flex",
+        justifyContent: "space-evenly",
+    });
+    dialog.element.append(buttonContainer);
+
+    const saveButton = document.createElement("button");
+    Object.assign(saveButton.style, {
+        fontSize: "16px",
+        backgroundColor: "var(--primary-bg)",
+    });
+    saveButton.textContent = "Save";
+    saveButton.onclick = async function () {
+        await api.fetchApi("/wilddivide/add_slot", {
+            method: "POST",
+            body: JSON.stringify({
+                name: editSlotName.value,
+                values: "- " + editValues.map((element) => element.value).join("\n- "),
+            }),
+        });
+        await refresh_wildcards();
+        dialog.close();
+    };
+    buttonContainer.append(saveButton);
+
+    const cancelButton = document.createElement("button");
+    Object.assign(cancelButton.style, {
+        fontSize: "16px",
+    });
+    cancelButton.textContent = "Cancel";
+    cancelButton.onclick = function () {
+        dialog.close();
+    };
+    buttonContainer.append(cancelButton);
+
+    return dialog;
+}
+
+function show_edit_dialog(dialog, widgetName) {
+    const container = document.createElement("div");
+    Object.assign(container.style, {
+        display: "grid",
+        gridTemplateColumns: "auto 1fr",
+        alignItems: "baseline",
+        gap: "4px",
+        marginTop: "10px",
+    });
+
+    const editSlotLabel = document.createElement("label");
+    Object.assign(editSlotLabel.style, {
+        textAlign: "right",
+    });
+    editSlotLabel.textContent = "Slot  ";
+
+    editSlotName = document.createElement("select");
+    Object.assign(editSlotName.style, {
+        width: "300px",
+        margin: "0",
+        padding: "3px",
+    });
+    for (const key of Object.keys(wildcards_dict).filter((key) => key.startsWith("m/"))) {
+        let option = document.createElement("option");
+        const slotName = key.substring(2);
+        option.value = slotName;
+        option.textContent = slotName;
+        editSlotName.append(option);
+    }
+    editSlotName.value = widgetName;
+    editValues = [];
+
+    container.append(editSlotLabel, editSlotName);
+
+    const marker = document.createElement("span");
+    const addButton = document.createElement("button");
+    Object.assign(addButton.style, {
+        fontSize: "14px",
+        backgroundColor: "transparent",
+    });
+    addButton.textContent = "Add new value";
+    addButton.onclick = function () {
+        const valueElement = add_new_value("-", "", marker);
+        valueElement.focus();
+    };
+    container.append(marker, addButton);
+
+    const slotName = `m/${widgetName}`;
+    wildcards_dict[slotName].forEach((value) => {
+        add_new_value("-", value, marker);
+    });
+
+    dialog.show("Edit Slot");
+    Object.assign(dialog.textElement.style, {
+        marginTop: "0",
+    });
+    dialog.textElement.append(container);
+}
+
+function add_new_value(label, value, marker) {
+    const labelElement = document.createElement("label");
+    Object.assign(labelElement.style, {
+        textAlign: "right",
+    });
+    labelElement.textContent = label;
+
+    const valueElement = document.createElement("textarea");
+    valueElement.classList.add("comfy-multiline-input");
+    Object.assign(valueElement.style, {
+        width: "300px",
+        height: "3ex",
+        fontSize: "14px",
+        resize: "none",
+        overflow: "hidden",
+    });
+    valueElement.value = value;
+    editValues.push(valueElement);
+
+    const adjustHeight = function () {
+        valueElement.style.height = "auto";
+        if (!valueElement.value.includes("\n")) {
+            valueElement.style.height = "3ex";
+        } else {
+            valueElement.style.height = valueElement.scrollHeight + "px";
+        }
+    };
+    valueElement.addEventListener("input", adjustHeight);
+    setTimeout(adjustHeight, 0);
+    marker.before(labelElement, valueElement);
+    return valueElement;
+}
