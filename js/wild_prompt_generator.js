@@ -54,7 +54,7 @@ function calculateContextMenuPosition(x, y, element, contextMenu) {
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
     const rect = element.getBoundingClientRect();
-    let nx = rect.left;
+    let nx = rect.right - contextMenu.offsetWidth;
     let ny = rect.bottom;
     const contextMenuWidth = contextMenu.offsetWidth;
     const contextMenuHeight = contextMenu.offsetHeight;
@@ -108,8 +108,18 @@ function setup_node(node) {
         }
 
         // Create widget container
-        const inputContainer = document.createElement("div");
-        Object.assign(inputContainer.style, {
+        const container = document.createElement("div");
+        Object.assign(container.style, {
+            display: "flex",
+            flexDirection: "row",
+            gap: "2px",
+            border: "none",
+        });
+
+        // Create combo
+        const combo = document.createElement("div");
+        Object.assign(combo.style, {
+            display: "flex",
             flexDirection: "row",
             fontSize: "12px",
             alignItems: "center",
@@ -118,6 +128,8 @@ function setup_node(node) {
             border: "1px solid var(--p-surface-500)",
             borderRadius: "8px",
             padding: "0px 8px",
+            flex: "1 1 auto",
+            width: "150px",
         });
 
         // Create label
@@ -125,14 +137,16 @@ function setup_node(node) {
         inputLbl.textContent = widgetName;
         Object.assign(inputLbl.style, {
             color: "var(--p-form-field-float-label-color)",
+            flex: "0"
         });
-        inputContainer.append(inputLbl);
+        combo.append(inputLbl);
 
         // Create select element
         const selectEl = document.createElement("span");
         Object.assign(selectEl.style, {
             width: "auto",
-            minWidth: "100px",
+            minWidth: "48px",
+            minHeight: "14px",
             fontSize: "12px",
             padding: "0px",
             margin: "0px",
@@ -145,9 +159,11 @@ function setup_node(node) {
             textWrap: "nowrap",
             textOverflow: "ellipsis",
             color: "var(--p-surface-0)",
+            flex: "1 1 0"
         });
         setValueColor(selectEl, value);
-        inputContainer.append(selectEl);
+        combo.append(selectEl);
+        container.append(combo);
 
         // Create context menu
         const contextMenu = document.createElement("div");
@@ -183,9 +199,10 @@ function setup_node(node) {
             Object.assign(option.style, {
                 backgroundColor: "var(--p-form-field-background)",
                 display: "block",
-                padding: "5px",
+                padding: "2px",
                 color: "var(--p-surface-0)",
                 textDecoration: "none",
+                fontSize: "12px",
             });
             setValueColor(option, v);
             option.addEventListener('mouseover', () => {
@@ -202,7 +219,25 @@ function setup_node(node) {
         }
         document.body.appendChild(contextMenu);
 
-        const widget = node.addDOMWidget(widgetName, 'mycombo', inputContainer, {
+        // Create settings button for the combo
+        const button = document.createElement("button")
+        Object.assign(button.style, {
+            backgroundColor: "transparent",
+            border: "none",
+            cursor: "pointer",
+            padding: "0px",
+            // height: "fit-content",
+            transform: "rotateZ(90deg)",
+        });
+        button.textContent = "✎";
+        button.onclick = () => {
+            setup_and_show_dialog("Edit");
+            set_edit_values(widgetName);
+        };
+        container.append(button);
+
+        // Create widget
+        const widget = node.addDOMWidget(widgetName, 'mycombo', container, {
             getValue() {
                 return selectEl.textContent;
             },
@@ -220,9 +255,9 @@ function setup_node(node) {
                 });
             }
         });
-        widget.inputContainer = inputContainer;
+        widget.container = container;
         widget.onRemove = () => {
-            inputContainer.remove();
+            container.remove();
         };
     }
 
@@ -246,10 +281,7 @@ function setup_node(node) {
         setAllRandom(node);
     });
     node.addWidget("button", "⚙️ Manage", null, () => {
-        if (!dialog) {
-            dialog = setup_dialog();
-        }
-        show_dialog(dialog);
+        setup_and_show_dialog("Add");
     });
     node.size[0] = width;
 }
@@ -271,6 +303,13 @@ function setAllRandom(node) {
     for (const widget of node.widgets.slice(2)) {
         widget.value = "random";
     }
+}
+
+function setup_and_show_dialog(tab) {
+    if (!dialog) {
+        dialog = setup_dialog();
+    }
+    show_dialog(dialog, tab);
 }
 
 // Sets up the dialog.
@@ -300,7 +339,10 @@ function setup_dialog() {
     return dialog;
 }
 
-function show_dialog(dialog) {
+let editSlotNames = null;
+let editSlotValues = null;
+
+function show_dialog(dialog, tab) {
     const addContainer = document.createElement("div");
     Object.assign(addContainer.style, {
         display: "none",
@@ -359,6 +401,7 @@ function show_dialog(dialog) {
     });
     addHelpText.textContent = "Each value should start with '- ' prefix.";
     addContainer.append(valueLbl, addSlotValues, addHelpText, addSaveButton);
+    addContainer.dataset.tab = "Add";
 
     const removeContainer = document.createElement("div");
     Object.assign(removeContainer.style, {
@@ -372,7 +415,7 @@ function show_dialog(dialog) {
     });
     removeSlotLbl.textContent = "Slot Name:";
 
-    const removeSlotValues = createSelect();
+    const removeSlotValues = createSelect("remove-slot-values");
     const removeSaveButton = document.createElement("button");
     Object.assign(removeSaveButton.style, {
         padding: "2px 10px",
@@ -394,6 +437,7 @@ function show_dialog(dialog) {
     };
 
     removeContainer.append(removeSlotLbl, removeSlotValues, removeSaveButton);
+    removeContainer.dataset.tab = "Remove";
 
     const editContainer = document.createElement("div");
     Object.assign(editContainer.style, {
@@ -402,7 +446,7 @@ function show_dialog(dialog) {
         gap: "10px",
     });
 
-    const editSlotNames = createSelect();
+    editSlotNames = createSelect("edit-slot-names");
     editSlotNames.onchange = function () {
         const slotName = 'm/' + editSlotNames.value;
         editSlotValues.value = '- ' + wildcards_dict[slotName].join("\n- ");
@@ -413,8 +457,9 @@ function show_dialog(dialog) {
     });
     editSlotLbl.textContent = "Slot Name:";
     editContainer.append(editSlotLbl, editSlotNames);
+    editContainer.dataset.tab = "Edit";
 
-    const editSlotValues = document.createElement("textarea");
+    editSlotValues = document.createElement("textarea");
     editSlotValues.classList.add("comfy-multiline-input");
     Object.assign(editSlotValues.style, {
         width: "300px",
@@ -472,7 +517,7 @@ function show_dialog(dialog) {
     });
     addButton.textContent = "Add";
     addButton.onclick = function () {
-        setActiveTab(tabHeader, "Add", addContainer);
+        setActiveTab(tabHeader, "Add");
     };
 
     const removeButton = document.createElement("button");
@@ -483,7 +528,7 @@ function show_dialog(dialog) {
     });
     removeButton.textContent = "Remove";
     removeButton.onclick = function () {
-        setActiveTab(tabHeader, "Remove", removeContainer);
+        setActiveTab(tabHeader, "Remove");
     };
 
     const editButton = document.createElement("button");
@@ -494,7 +539,7 @@ function show_dialog(dialog) {
     });
     editButton.textContent = "Edit";
     editButton.onclick = function () {
-        setActiveTab(tabHeader, "Edit", editContainer);
+        setActiveTab(tabHeader, "Edit");
     };
 
     tabHeader.append(addButton, removeButton, editButton);
@@ -505,11 +550,12 @@ function show_dialog(dialog) {
         marginTop: "0",
     });
     dialog.textElement.append(tabHeader, addContainer, removeContainer, editContainer);
-    setActiveTab(tabHeader, "Add", addContainer);
+    setActiveTab(tabHeader, tab);
 }
 
-function createSelect() {
+function createSelect(id) {
     const select = document.createElement("select");
+    select.id = id;
     Object.assign(select.style, {
         width: "300px",
     });
@@ -525,7 +571,8 @@ function createSelect() {
 
 let activeContainer = null;
 
-function setActiveTab(tabHeader, activeTab, container) {
+function setActiveTab(tabHeader, activeTab) {
+    let container = document.querySelector(`[data-tab="${activeTab}"]`);
     for (const tab of tabHeader.children) {
         if (tab.textContent == activeTab) {
             tab.style.backgroundColor = "var(--primary-bg)";
@@ -539,3 +586,10 @@ function setActiveTab(tabHeader, activeTab, container) {
     container.style.display = "grid";
     activeContainer = container;
 }
+
+function set_edit_values(widgetName) {
+    editSlotNames.value = widgetName;
+    const slotName = 'm/' + widgetName;
+    editSlotValues.value = '- ' + wildcards_dict[slotName].join("\n- ");
+}
+
