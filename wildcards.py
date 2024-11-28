@@ -407,7 +407,7 @@ def save_wildcard_dict(wildcard_dict):
         else:
             m_wildcard_dict_new[k] = v
     with open(WILDCARD_DICT_FILE, "w") as f:
-        yaml.dump(m_wildcard_dict_new, f)
+        yaml.dump(m_wildcard_dict_new, f, encoding="utf-8", allow_unicode=True, sort_keys=False)
 
 def is_numeric_string(input_str):
     return re.match(r"^-?\d+(\.\d+)?$", input_str) is not None
