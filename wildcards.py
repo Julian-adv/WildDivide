@@ -28,6 +28,12 @@ def get_wildcard_dict():
         return wildcard_dict
 
 
+def set_wildcard_dict(dict):
+    global wildcard_dict
+    with wildcard_lock:
+        wildcard_dict = dict
+
+
 def wildcard_normalize(x):
     return x.replace("\\", "/").replace(" ", "-").lower()
 
@@ -394,6 +400,21 @@ def delete_slot(name):
     name = f"m/{name}"
     del local_wildcard_dict[name]
     save_wildcard_dict(local_wildcard_dict)
+
+# move from_key before to_key
+def reorder_slot(from_key, to_key):
+    local_wildcard_dict = get_wildcard_dict()
+    keys = list(local_wildcard_dict.keys())
+    from_key = f"m/{from_key}"
+    to_key = f"m/{to_key}"
+    if from_key in keys and to_key in keys:
+        from_index = keys.index(from_key)
+        keys.pop(from_index)
+        to_index = keys.index(to_key)
+        keys.insert(to_index, from_key)
+        reordered_dict = {k: local_wildcard_dict[k] for k in keys}
+        set_wildcard_dict(reordered_dict)
+        save_wildcard_dict(reordered_dict)
 
 def save_wildcard_dict(wildcard_dict):
     m_wildcard_dict = {k: v for k, v in wildcard_dict.items() if k.startswith("m/")}

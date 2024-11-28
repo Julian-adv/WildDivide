@@ -72,6 +72,8 @@ function calculateContextMenuPosition(x, y, element, contextMenu) {
     return [nx, ny];
 }
 
+let fromKey = null;
+
 // Sets up the node with the wildcards.
 function setup_node(node) {
     let copied_keys = Object.keys(wildcards_dict).filter((key) => key.startsWith("m/"));
@@ -119,7 +121,35 @@ function setup_node(node) {
             flexDirection: "row",
             gap: "2px",
             border: "none",
+            cursor: "grab",
+            userSelect: "none",
         });
+        container.draggable = true;
+        container.addEventListener("dragstart", (e) => {
+            e.target.style.opacity = "0.4";
+            fromKey = widgetName;
+        });
+        container.addEventListener("dragend", (e) => {
+            e.target.style.opacity = "1";
+        });
+        container.addEventListener("dragover", (e) => {
+            e.preventDefault();
+        });
+        container.addEventListener("drop", async (e) => {
+            e.preventDefault();
+            const toKey = e.target.tagName === "LABEL" ? e.target.textContent : e.target.closest('.widget-container').querySelector('label').textContent;
+            console.log("reorder", fromKey, toKey);
+            await api.fetchApi("/wilddivide/reorder_slot", {
+                method: "POST",
+                body: JSON.stringify({
+                    from: fromKey,
+                    to: toKey,
+                }),
+            });
+            await refresh_wildcards();
+            fromKey = null;
+        });
+        container.classList.add('widget-container');
 
         // Create combo
         const combo = document.createElement("div");
@@ -130,7 +160,7 @@ function setup_node(node) {
             alignItems: "center",
             justifyContent: "space-between",
             gap: "10px",
-            border: "1px solid var(--p-surface-500)",
+            border: "none",
             borderRadius: "8px",
             padding: "0px 8px",
             flex: "1 1 auto",
@@ -139,13 +169,14 @@ function setup_node(node) {
         });
 
         // Create label
-        const inputLbl = document.createElement("label");
-        inputLbl.textContent = widgetName;
-        Object.assign(inputLbl.style, {
+        const inputLabel = document.createElement("label");
+        inputLabel.textContent = widgetName;
+        Object.assign(inputLabel.style, {
             color: "var(--p-form-field-float-label-color)",
-            flex: "0"
+            flex: "0",
+            cursor: "grab",
         });
-        combo.append(inputLbl);
+        combo.append(inputLabel);
 
         // Create select element
         const selectEl = document.createElement("span");
@@ -184,7 +215,7 @@ function setup_node(node) {
         });
 
         let isMouseDown = false;
-        selectEl.addEventListener('mousedown', (e) => {
+        selectEl.addEventListener('click', (e) => {
             isMouseDown = true;
             contextMenu.style.display = "block";
             const [x, y] = calculateContextMenuPosition(e.clientX, e.clientY, selectEl, contextMenu);
@@ -220,6 +251,7 @@ function setup_node(node) {
             option.addEventListener('click', () => {
                 setValueColor(selectEl, v);
                 contextMenu.style.display = "none";
+                isMouseDown = false;
             });
             contextMenu.append(option);
         }
@@ -251,7 +283,7 @@ function setup_node(node) {
                 setValueColor(selectEl, v);
             },
             getHeight() {
-                return 25;
+                return 24;
             },
             onDraw(w) {
                 // These are needed to be here
@@ -280,7 +312,7 @@ function setup_node(node) {
         }
     });
 
-    node.addWidget("button", "Last generated", null, () => {
+    node.addWidget("button", "Get last generated", null, () => {
         setLastGenerated(node);
     });
     node.addWidget("button", "All random", null, () => {

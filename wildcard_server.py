@@ -38,6 +38,12 @@ async def delete_slot(request):
     wildcards.delete_slot(data["name"])
     return web.json_response({"status": "success"})
 
+@PromptServer.instance.routes.post("/wilddivide/reorder_slot")
+async def reorder_slot(request):
+    data = await request.json()
+    wildcards.reorder_slot(data["from"], data["to"])
+    return web.json_response({"status": "success"})
+
 @PromptServer.instance.routes.get("/wilddivide/last_generated")
 async def last_generated(request):
     data = {"data": wild_prompt_generator.get_last_generated()}
