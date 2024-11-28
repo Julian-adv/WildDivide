@@ -382,7 +382,8 @@ function show_edit_dialog(dialog, title, widgetName, disabled) {
     Object.assign(slotElement.style, {
         width: "300px",
         margin: "0",
-        padding: "3px",
+        padding: "3px 5px",
+        border: "1px solid var(--p-form-field-border-color)",
     });
     slotElement.disabled = disabled;
     slotElement.value = widgetName;
@@ -434,6 +435,8 @@ function setup_common_dialog(okLabel, okCallback) {
     Object.assign(okButton.style, {
         fontSize: "16px",
         backgroundColor: "var(--primary-bg)",
+        border: "1px solid var(--p-form-field-border-color)",
+        paddingBottom: "2px",
     });
     okButton.textContent = okLabel;
     okButton.onclick = okCallback;
@@ -443,6 +446,8 @@ function setup_common_dialog(okLabel, okCallback) {
     const cancelButton = document.createElement("button");
     Object.assign(cancelButton.style, {
         fontSize: "16px",
+        border: "1px solid var(--p-form-field-border-color)",
+        paddingBottom: "2px",
     });
     cancelButton.textContent = "Cancel";
     cancelButton.onclick = function () {
@@ -459,7 +464,7 @@ function show_dialog_internal(dialog, title, slotNameElement, values, disabled) 
         display: "grid",
         gridTemplateColumns: "auto 1fr auto",
         alignItems: "baseline",
-        gap: "4px",
+        gap: "0px 2px",
         marginTop: "10px",
     });
 
@@ -506,7 +511,7 @@ function show_dialog_internal(dialog, title, slotNameElement, values, disabled) 
         fontSize: "14px",
         backgroundColor: "transparent",
     });
-    addButton.textContent = "Add new value";
+    addButton.textContent = "Add new value (Ctrl+⏎)";
     addButton.onclick = function () {
         const valueElement = add_new_value("-", "", marker);
         valueElement.focus();
@@ -540,16 +545,28 @@ function add_new_value(label, value, marker) {
         fontSize: "14px",
         resize: "none",
         overflow: "hidden",
+        borderRadius: "4px",
+        padding: "2px 5px",
     });
     valueElement.value = value;
+    
+    // Ctrl+Enter to add new value
+    valueElement.addEventListener("keydown", function(e) {
+        if (e.ctrlKey && e.key === "Enter") {
+            e.preventDefault(); // 기본 동작 방지
+            const valueElement = add_new_value("-", "", marker);
+            valueElement.focus();
+        }
+    });
+    
     valueElements.push(valueElement);
 
     const adjustHeight = function () {
         valueElement.style.height = "auto";
-        if (!valueElement.value.includes("\n")) {
-            valueElement.style.height = "3ex";
-        } else {
+        if (valueElement.value.includes("\n") || valueElement.value.length > 39) {
             valueElement.style.height = valueElement.scrollHeight + "px";
+        } else {
+            valueElement.style.height = "3ex";
         }
     };
     valueElement.addEventListener("input", adjustHeight);
