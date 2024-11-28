@@ -76,7 +76,7 @@ let fromKey = null;
 
 // Sets up the node with the wildcards.
 function setup_node(node) {
-    let copied_keys = Object.keys(wildcards_dict).filter((key) => key.startsWith("m/"));
+    let filtered_keys = Object.keys(wildcards_dict).filter((key) => key.startsWith("m/"));
 
     // Get current values
     let old_values = {};
@@ -91,241 +91,285 @@ function setup_node(node) {
     node.widgets.splice(2);
     let [width, height] = node.size;
     
-    for (const key of copied_keys) {
-        let widgetName = key.substring(2); // Remove "m/" prefix
-        let values = ["disabled", "random", ...wildcards_dict[key]];
-        // Preserve old value
-        let value = old_values[widgetName];
-        if (value == null || value == undefined) {
-            value = "random";
-        } else if (!values.includes(value)) {
-            // Try similar value
-            let found = false;
-            for (const similar_value of wildcards_dict[key]) {
-                if (similar_value.toLowerCase().includes(value.toLowerCase()) ||
-                    value.toLowerCase().includes(similar_value.toLowerCase())) {
-                    value = similar_value;
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                value = "random";
-            }
-        }
-
-        // Create widget container
-        const container = document.createElement("div");
-        Object.assign(container.style, {
-            display: "flex",
-            flexDirection: "row",
-            gap: "2px",
-            border: "none",
-            cursor: "grab",
-            userSelect: "none",
-        });
-        container.draggable = true;
-        container.addEventListener("dragstart", (e) => {
-            e.target.style.opacity = "0.4";
-            fromKey = widgetName;
-        });
-        container.addEventListener("dragend", (e) => {
-            e.target.style.opacity = "1";
-        });
-        container.addEventListener("dragover", (e) => {
-            e.preventDefault();
-        });
-        container.addEventListener("drop", async (e) => {
-            e.preventDefault();
-            const toKey = e.target.tagName === "LABEL" ? e.target.textContent : e.target.closest('.widget-container').querySelector('label').textContent;
-            console.log("reorder", fromKey, toKey);
-            await api.fetchApi("/wilddivide/reorder_slot", {
-                method: "POST",
-                body: JSON.stringify({
-                    from: fromKey,
-                    to: toKey,
-                }),
-            });
-            await refresh_wildcards();
-            fromKey = null;
-        });
-        container.classList.add('widget-container');
-
-        // Create combo
-        const combo = document.createElement("div");
-        Object.assign(combo.style, {
-            display: "flex",
-            flexDirection: "row",
-            fontSize: "12px",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "10px",
-            border: "none",
-            borderRadius: "8px",
-            padding: "0px 8px",
-            flex: "1 1 auto",
-            width: "150px",
-            backgroundColor: "var(--p-surface-800)",
-        });
-
-        // Create label
-        const inputLabel = document.createElement("label");
-        inputLabel.textContent = widgetName;
-        Object.assign(inputLabel.style, {
-            color: "var(--p-form-field-float-label-color)",
-            flex: "0",
-            cursor: "grab",
-        });
-        combo.append(inputLabel);
-
-        // Create select element
-        const selectEl = document.createElement("span");
-        Object.assign(selectEl.style, {
-            width: "auto",
-            minWidth: "48px",
-            minHeight: "14px",
-            fontSize: "12px",
-            padding: "0px",
-            margin: "0px",
-            border: "none",
-            outline: "none",
-            backgroundColor: "var(--p-surface-800)",
-            textAlignLast: "right",
-            cursor: "pointer",
-            overflow: "clip",
-            textWrap: "nowrap",
-            textOverflow: "ellipsis",
-            color: "var(--p-surface-0)",
-            flex: "1 1 0"
-        });
-        setValueColor(selectEl, value);
-        combo.append(selectEl);
-        container.append(combo);
-
-        // Create context menu
-        const contextMenu = document.createElement("div");
-        Object.assign(contextMenu.style, {
-            display: "none",
-            position: "absolute",
-            backgroundColor: "var(--p-form-field-background)",
-            minWidth: "100px",
-            boxShadow: "0px 8px 16px 0px rgba(0,0,0,0.2)",
-            zIndex: "100",
-            padding: "2px",
-        });
-
-        let isMouseDown = false;
-        selectEl.addEventListener('click', (e) => {
-            isMouseDown = true;
-            contextMenu.style.display = "block";
-            const [x, y] = calculateContextMenuPosition(e.clientX, e.clientY, selectEl, contextMenu);
-            contextMenu.style.left = `${x}px`;
-            contextMenu.style.top = `${y}px`;
-        });
-        document.addEventListener('click', (e) => {
-            if (!isMouseDown) {
-                contextMenu.style.display = "none";
-            }
-            isMouseDown = false
-        });
-
-        // Create menu items
-        for (const v of values) {
-            let option = document.createElement("a");
-            option.href = "#";
-            Object.assign(option.style, {
-                backgroundColor: "var(--p-form-field-background)",
-                display: "block",
-                padding: "2px",
-                color: "var(--p-surface-0)",
-                textDecoration: "none",
-                fontSize: "12px",
-            });
-            setValueColor(option, v);
-            option.addEventListener('mouseover', () => {
-                option.style.backgroundColor = "var(--p-form-field-hover-border-color)";
-            });
-            option.addEventListener('mouseout', () => {
-                option.style.backgroundColor = "var(--p-form-field-background)";
-            });
-            option.addEventListener('click', () => {
-                setValueColor(selectEl, v);
-                contextMenu.style.display = "none";
-                isMouseDown = false;
-            });
-            contextMenu.append(option);
-        }
-        document.body.appendChild(contextMenu);
-
-        // Create settings button for the combo
-        const button = document.createElement("button")
-        Object.assign(button.style, {
-            backgroundColor: "transparent",
-            border: "none",
-            cursor: "pointer",
-            padding: "2px 0px",
-            width: "16px",
-            height: "16px",
-            color: "var(--p-form-field-float-label-color)",
-        });
-        button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"> <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /> </svg>';
-        button.onclick = () => {
-            setup_and_show_edit_dialog(widgetName);
-        };
-        container.append(button);
-
-        // Create widget
-        const widget = node.addDOMWidget(widgetName, 'mycombo', container, {
-            getValue() {
-                return selectEl.textContent;
-            },
-            setValue(v) {
-                setValueColor(selectEl, v);
-            },
-            getHeight() {
-                return 24;
-            },
-            onDraw(w) {
-                // These are needed to be here
-                Object.assign(w.element.style, {
-                    display: "flex",
-                    height: "22px",
-                });
-            }
-        });
-        widget.container = container;
-        widget.onRemove = () => {
-            container.remove();
-        };
+    for (const key of filtered_keys) {
+        const slotName = key.substring(2); // Remove "m/" prefix
+        const values = ["disabled", "random", ...wildcards_dict[key]];
+        const value = find_similar_value(old_values, values, slotName);
+        add_combo_widget(node, slotName, value, values);
     }
 
-    // To prevent widgets overlapping
-    node.addDOMWidget("space", 'space', document.createElement("div"), {
+    add_buttons_widget(node);
+    node.size[0] = width;
+}
+
+function add_combo_widget(node, widgetName, value, values) {
+    // Create widget container
+    const container = document.createElement("div");
+    Object.assign(container.style, {
+        display: "flex",
+        flexDirection: "row",
+        gap: "2px",
+        border: "none",
+        cursor: "grab",
+        userSelect: "none",
+    });
+    container.draggable = true;
+    container.addEventListener("dragstart", (e) => {
+        e.target.style.opacity = "0.4";
+        fromKey = widgetName;
+    });
+    container.addEventListener("dragend", (e) => {
+        e.target.style.opacity = "1";
+    });
+    container.addEventListener("dragover", (e) => {
+        e.preventDefault();
+    });
+    container.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        const toKey = e.target.tagName === "LABEL" ? e.target.textContent : e.target.closest('.widget-container').querySelector('label').textContent;
+        console.log("reorder", fromKey, toKey);
+        await api.fetchApi("/wilddivide/reorder_slot", {
+            method: "POST",
+            body: JSON.stringify({
+                from: fromKey,
+                to: toKey,
+            }),
+        });
+        await refresh_wildcards();
+        fromKey = null;
+    });
+    container.classList.add('widget-container');
+
+    // Create combo
+    const combo = document.createElement("div");
+    Object.assign(combo.style, {
+        display: "flex",
+        flexDirection: "row",
+        fontSize: "12px",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: "10px",
+        border: "none",
+        borderRadius: "8px",
+        padding: "0px 8px",
+        flex: "1 1 auto",
+        width: "150px",
+        backgroundColor: "var(--p-surface-800)",
+    });
+
+    // Create label
+    const inputLabel = document.createElement("label");
+    inputLabel.textContent = widgetName;
+    Object.assign(inputLabel.style, {
+        color: "var(--p-form-field-float-label-color)",
+        flex: "0",
+        cursor: "grab",
+    });
+    combo.append(inputLabel);
+
+    // Create select element
+    const selectEl = document.createElement("span");
+    Object.assign(selectEl.style, {
+        width: "auto",
+        minWidth: "48px",
+        minHeight: "14px",
+        fontSize: "12px",
+        padding: "0px",
+        margin: "0px",
+        border: "none",
+        outline: "none",
+        backgroundColor: "var(--p-surface-800)",
+        textAlignLast: "right",
+        cursor: "pointer",
+        overflow: "clip",
+        textWrap: "nowrap",
+        textOverflow: "ellipsis",
+        color: "var(--p-surface-0)",
+        flex: "1 1 0"
+    });
+    setValueColor(selectEl, value);
+    combo.append(selectEl);
+    container.append(combo);
+
+    // Create context menu
+    const contextMenu = document.createElement("div");
+    Object.assign(contextMenu.style, {
+        display: "none",
+        position: "absolute",
+        backgroundColor: "var(--p-form-field-background)",
+        minWidth: "100px",
+        boxShadow: "0px 8px 16px 0px rgba(0,0,0,0.2)",
+        zIndex: "100",
+        padding: "2px",
+    });
+
+    let isMouseDown = false;
+    selectEl.addEventListener('click', (e) => {
+        isMouseDown = true;
+        contextMenu.style.display = "block";
+        const [x, y] = calculateContextMenuPosition(e.clientX, e.clientY, selectEl, contextMenu);
+        contextMenu.style.left = `${x}px`;
+        contextMenu.style.top = `${y}px`;
+    });
+    document.addEventListener('click', (e) => {
+        if (!isMouseDown) {
+            contextMenu.style.display = "none";
+        }
+        isMouseDown = false
+    });
+
+    // Create menu items
+    for (const v of values) {
+        let option = document.createElement("a");
+        option.href = "#";
+        Object.assign(option.style, {
+            backgroundColor: "var(--p-form-field-background)",
+            display: "block",
+            padding: "2px",
+            color: "var(--p-surface-0)",
+            textDecoration: "none",
+            fontSize: "12px",
+        });
+        setValueColor(option, v);
+        option.addEventListener('mouseover', () => {
+            option.style.backgroundColor = "var(--p-form-field-hover-border-color)";
+        });
+        option.addEventListener('mouseout', () => {
+            option.style.backgroundColor = "var(--p-form-field-background)";
+        });
+        option.addEventListener('click', () => {
+            setValueColor(selectEl, v);
+            contextMenu.style.display = "none";
+            isMouseDown = false;
+        });
+        contextMenu.append(option);
+    }
+    document.body.appendChild(contextMenu);
+
+    // Create settings button for the combo
+    const button = document.createElement("button")
+    Object.assign(button.style, {
+        backgroundColor: "transparent",
+        border: "none",
+        cursor: "pointer",
+        padding: "2px 0px",
+        width: "16px",
+        height: "16px",
+        color: "var(--p-form-field-float-label-color)",
+    });
+    button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"> <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /> </svg>';
+    button.onclick = () => {
+        setup_and_show_edit_dialog(widgetName);
+    };
+    container.append(button);
+
+    // Create widget
+    const widget = node.addDOMWidget(widgetName, 'mycombo', container, {
+        getValue() {
+            return selectEl.textContent;
+        },
+        setValue(v) {
+            setValueColor(selectEl, v);
+        },
         getHeight() {
-            return 25;
+            return 24;
         },
         onDraw(w) {
+            // These are needed to be here
             Object.assign(w.element.style, {
                 display: "flex",
                 height: "22px",
             });
         }
     });
+    widget.container = container;
+    widget.onRemove = () => {
+        container.remove();
+    };
+}
 
-    node.addWidget("button", "Get last generated", null, () => {
-        setLastGenerated(node);
+function add_buttons_widget(node) {
+    const container = document.createElement("div");
+    Object.assign(container.style, {
+        display: "flex",
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: "5px 10px",
+        border: "none",
+        marginTop: "10px",
     });
-    node.addWidget("button", "All random", null, () => {
-        setAllRandom(node);
+
+    const buttons = [
+        {
+            text: "🔍 Get last generated",
+            onClick: () => set_last_generated(node)
+        },
+        {
+            text: "🔄 All random",
+            onClick: () => set_all_random(node)
+        },
+        {
+            text: "🎰 Add slot",
+            onClick: () => setup_and_show_add_dialog()
+        },
+        {
+            text: "⚊ Add separator",
+            onClick: () => {}  // 구현 예정
+        }
+    ];
+
+    buttons.forEach(({text, onClick}) => {
+        const button = document.createElement("button");
+        Object.assign(button.style, {
+            border: "2px solid var(--border-color)",
+            borderRadius: "8px",
+            fontSize: "12px",
+            backgroundColor: "transparent",
+            paddingBottom: "3px",
+        });
+        button.textContent = text;
+        button.onclick = onClick;
+        container.append(button);
     });
-    node.addWidget("button", "➕ Add slot", null, () => {
-        setup_and_show_add_dialog();
+
+    const widget = node.addDOMWidget("buttons", "buttons", container, {
+        getHeight() {
+            return 48;
+        },
+        onDraw(w) {
+            Object.assign(w.element.style, {
+                display: "flex",
+                height: "48px",
+            });
+        }
     });
-    node.size[0] = width;
+    widget.container = container;
+    widget.onRemove = () => {
+        container.remove();
+    };
+}
+
+function find_similar_value(old_values, current_values, slotName) {
+    let value = old_values[slotName];
+    if (value == null || value == undefined) {
+        return "random";
+    } else if (current_values.includes(value)) {
+        return value;
+    } else {
+        // Try similar value
+        for (const similar_value of current_values) {
+            if (similar_value.toLowerCase().includes(value.toLowerCase()) ||
+                value.toLowerCase().includes(similar_value.toLowerCase())) {
+                value = similar_value;
+                return value;
+            }
+        }
+        return "random";
+    }
 }
 
 // Sets the last generated values to the widgets.
-async function setLastGenerated(node) {
+async function set_last_generated(node) {
     let res = await api.fetchApi("/wilddivide/last_generated");
     let data = await res.json();
     let last_generated = data.data;
@@ -337,7 +381,7 @@ async function setLastGenerated(node) {
 }
 
 // Sets all widgets to random.
-function setAllRandom(node) {
+function set_all_random(node) {
     for (const widget of node.widgets.slice(2)) {
         widget.value = "random";
     }
