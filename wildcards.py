@@ -380,16 +380,40 @@ def process(text, seed=None, kwargs=None):
 
 def add_slot(name, values):
     local_wildcard_dict = get_wildcard_dict()
-    name = name.strip()
-    if name == "":
+    slot_name = name.strip()
+    if slot_name == "":
         return
-    name = wildcard_normalize(name)
-    name = f"m/{name}"
+    slot_name = wildcard_normalize(slot_name)
+    slot_name = f"m/{slot_name}"
     values = values.removeprefix("- ").split("\n- ")
-    values = [x for x in values]
 
-    local_wildcard_dict[name] = values
-    save_wildcard_dict(local_wildcard_dict)
+    # find proper position
+    index = -1
+    keys = list(local_wildcard_dict.keys())
+    if '/' in name:
+        group_name = remove_last_key(slot_name) + '/'
+        for i in range(len(keys)-1, -1, -1):
+            if keys[i].startswith(group_name):
+                index = i
+                break
+    else:
+        for i in range(len(keys)-1, -1, -1):
+            if keys[i].startswith("m/") and keys[i].count('/') == 1:
+                index = i
+                break
+
+    if index != -1:
+        keys.insert(index + 1, slot_name)
+        local_wildcard_dict[slot_name] = values
+        new_dict = {k: local_wildcard_dict[k] for k in keys}
+        set_wildcard_dict(new_dict)
+        save_wildcard_dict(new_dict)
+    else:
+        local_wildcard_dict[slot_name] = values
+        save_wildcard_dict(local_wildcard_dict)
+
+def remove_last_key(key):
+    return '/'.join(key.split('/')[:-1])
 
 def delete_slot(name):
     local_wildcard_dict = get_wildcard_dict()
@@ -418,17 +442,38 @@ def reorder_slot(from_key, to_key):
 
 def save_wildcard_dict(wildcard_dict):
     m_wildcard_dict = {k: v for k, v in wildcard_dict.items() if k.startswith("m/")}
+    m_wildcard_dict = convert_group_to_dict(m_wildcard_dict)
     m_wildcard_dict_new = {}
     for k, v in m_wildcard_dict.items():
         if "/" in k:
             keys = k.split("/")
             if keys[0] not in m_wildcard_dict_new:
                 m_wildcard_dict_new[keys[0]] = {}
-            m_wildcard_dict_new[keys[0]][keys[1]] = v
+            if len(keys) == 2:
+                m_wildcard_dict_new[keys[0]][keys[1]] = v
+            elif len(keys) == 3:
+                if keys[1] not in m_wildcard_dict_new[keys[0]]:
+                    m_wildcard_dict_new[keys[0]][keys[1]] = {}
+                m_wildcard_dict_new[keys[0]][keys[1]][keys[2]] = v
         else:
             m_wildcard_dict_new[k] = v
     with open(WILDCARD_DICT_FILE, "w") as f:
         yaml.dump(m_wildcard_dict_new, f, encoding="utf-8", allow_unicode=True, sort_keys=False)
+
+# convert all entries after the entry which has GROUP first value to children of the entry
+def convert_group_to_dict(wildcard_dict):
+    group_name = None
+    group_dict = {}
+    for k, v in wildcard_dict.items():
+        if v[0] == "GROUP":
+            group_name = k[2:]
+        else:
+            if group_name is None:
+                group_dict[k] = v
+            else:
+                new_key = f"m/{group_name}/{k[2:]}"
+                group_dict[new_key] = v
+    return group_dict
 
 def is_numeric_string(input_str):
     return re.match(r"^-?\d+(\.\d+)?$", input_str) is not None

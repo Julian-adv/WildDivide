@@ -2,6 +2,7 @@ import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 
 let wildcards_dict = {};
+
 async function load_wildcards() {
     let res = await api.fetchApi("/wilddivide/wildcards/dict");
     let data = await res.json();
@@ -73,6 +74,7 @@ function calculateContextMenuPosition(x, y, element, contextMenu) {
 }
 
 let fromKey = null;
+let group_name = null;
 
 // Sets up the node with the wildcards.
 function setup_node(node) {
@@ -90,55 +92,52 @@ function setup_node(node) {
     }
     node.widgets.splice(2);
     let [width, height] = node.size;
+    group_name = null;
     
     for (const key of filtered_keys) {
         const slotName = key.substring(2); // Remove "m/" prefix
         const values = ["disabled", "random", ...wildcards_dict[key]];
         const value = find_similar_value(old_values, values, slotName);
-        add_combo_widget(node, slotName, value, values);
+        if (slotName.includes("/")) {
+            check_group_name(node, slotName, value, values);
+        } else {
+            add_combo_widget(node, slotName, value, values);
+        }
     }
 
     add_buttons_widget(node);
     node.size[0] = width;
 }
 
+function find_similar_value(old_values, current_values, slotName) {
+    let value = old_values[slotName];
+    if (value == null || value == undefined) {
+        return "random";
+    } else if (current_values.includes(value)) {
+        return value;
+    } else {
+        // Try similar value
+        for (const similar_value of current_values) {
+            if (similar_value.toLowerCase().includes(value.toLowerCase()) ||
+                value.toLowerCase().includes(similar_value.toLowerCase())) {
+                return similar_value;
+            }
+        }
+        return "random";
+    }
+}
+
+function check_group_name(node, widgetName, value, values) {
+    const [new_group_name, widget_name] = widgetName.split("/");
+    if (new_group_name != group_name) {
+        group_name = new_group_name;
+        add_group_widget(node, group_name);
+    }
+    add_combo_widget(node, widgetName, value, values);
+}
+
 function add_combo_widget(node, widgetName, value, values) {
-    // Create widget container
-    const container = document.createElement("div");
-    Object.assign(container.style, {
-        display: "flex",
-        flexDirection: "row",
-        gap: "2px",
-        border: "none",
-        cursor: "grab",
-        userSelect: "none",
-    });
-    container.draggable = true;
-    container.addEventListener("dragstart", (e) => {
-        e.target.style.opacity = "0.4";
-        fromKey = widgetName;
-    });
-    container.addEventListener("dragend", (e) => {
-        e.target.style.opacity = "1";
-    });
-    container.addEventListener("dragover", (e) => {
-        e.preventDefault();
-    });
-    container.addEventListener("drop", async (e) => {
-        e.preventDefault();
-        const toKey = e.target.tagName === "LABEL" ? e.target.textContent : e.target.closest('.widget-container').querySelector('label').textContent;
-        console.log("reorder", fromKey, toKey);
-        await api.fetchApi("/wilddivide/reorder_slot", {
-            method: "POST",
-            body: JSON.stringify({
-                from: fromKey,
-                to: toKey,
-            }),
-        });
-        await refresh_wildcards();
-        fromKey = null;
-    });
-    container.classList.add('widget-container');
+    const container = create_draggable_container(widgetName);
 
     // Create combo
     const combo = document.createElement("div");
@@ -259,7 +258,7 @@ function add_combo_widget(node, widgetName, value, values) {
     });
     button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"> <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /> </svg>';
     button.onclick = () => {
-        setup_and_show_edit_dialog(widgetName);
+        show_edit_dialog(widgetName);
     };
     container.append(button);
 
@@ -288,6 +287,60 @@ function add_combo_widget(node, widgetName, value, values) {
     };
 }
 
+function add_group_widget(node, widgetName) {
+    // Container
+    const container = create_draggable_container(widgetName);
+
+    // Label
+    const label = document.createElement("label");
+    Object.assign(label.style, {
+        fontSize: "14px",
+        flex: "1 1 auto",
+        width: "150px",
+        alignSelf: "center",
+    });
+    label.textContent = widgetName;
+    
+    // Settings button
+    const button = document.createElement("button");
+    Object.assign(button.style, {
+        backgroundColor: "transparent",
+        border: "none",
+        cursor: "pointer",
+        padding: "2px 0px",
+        width: "16px",
+        height: "16px",
+        color: "var(--p-form-field-float-label-color)",
+    });
+    button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"> <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /> </svg>';
+    button.onclick = () => {
+        show_edit_dialog(widgetName);
+    };
+    container.append(label, button);
+
+    const widget = node.addDOMWidget(widgetName, 'mygroup', container, {
+        getValue() {
+            return 'disabled';
+        },
+        setValue(v) {
+        },
+        getHeight() {
+            return 24;
+        },
+        onDraw(w) {
+            Object.assign(w.element.style, {
+                display: "flex",
+                height: "22px",
+            });
+        }
+    });
+    widget.container = container;
+    widget.onRemove = () => {
+        container.remove();
+    };
+    group_name = widgetName;
+}
+
 function add_buttons_widget(node) {
     const container = document.createElement("div");
     Object.assign(container.style, {
@@ -310,11 +363,11 @@ function add_buttons_widget(node) {
         },
         {
             text: "🎰 Add slot",
-            onClick: () => setup_and_show_add_dialog()
+            onClick: () => show_add_dialog()
         },
         {
-            text: "⚊ Add separator",
-            onClick: () => {}  // 구현 예정
+            text: "📁 Add group",
+            onClick: () => show_group_dialog()
         }
     ];
 
@@ -334,7 +387,7 @@ function add_buttons_widget(node) {
 
     const widget = node.addDOMWidget("buttons", "buttons", container, {
         getHeight() {
-            return 48;
+            return 78;
         },
         onDraw(w) {
             Object.assign(w.element.style, {
@@ -347,25 +400,6 @@ function add_buttons_widget(node) {
     widget.onRemove = () => {
         container.remove();
     };
-}
-
-function find_similar_value(old_values, current_values, slotName) {
-    let value = old_values[slotName];
-    if (value == null || value == undefined) {
-        return "random";
-    } else if (current_values.includes(value)) {
-        return value;
-    } else {
-        // Try similar value
-        for (const similar_value of current_values) {
-            if (similar_value.toLowerCase().includes(value.toLowerCase()) ||
-                value.toLowerCase().includes(similar_value.toLowerCase())) {
-                value = similar_value;
-                return value;
-            }
-        }
-        return "random";
-    }
 }
 
 // Sets the last generated values to the widgets.
@@ -389,50 +423,49 @@ function set_all_random(node) {
 
 let addDialog = null;
 let editDialog = null;
+let groupDialog = null;
 let slotElement = null;
 let valueElements = [];
 
-function setup_and_show_add_dialog() {
+const DialogType = {
+    ADD: 0,
+    EDIT: 1,
+    GROUP: 2
+}
+
+function show_add_dialog() {
     if (!addDialog) {
-        addDialog = setup_edit_dialog();
+        addDialog = setup_dialog(false);
     }
-    show_edit_dialog(addDialog, "Add Slot", "", false);
+    show_dialog(addDialog, "Add Slot", "", DialogType.ADD);
 }
 
-function setup_and_show_edit_dialog(widgetName) {
+function show_edit_dialog(widgetName) {
     if (!editDialog) {
-        editDialog = setup_edit_dialog();
+        editDialog = setup_dialog(false);
     }
-    show_edit_dialog(editDialog, "Edit Slot", widgetName, true);
+    show_dialog(editDialog, "Edit Slot", widgetName, DialogType.EDIT);
 }
 
-function setup_edit_dialog() {
+function show_group_dialog() {
+    if (!groupDialog) {
+        groupDialog = setup_dialog(true);
+    }
+    show_dialog(groupDialog, "Add Group", "", DialogType.GROUP);
+}
+
+function setup_dialog(is_group) {
     const dialog = setup_common_dialog("Save", async function () {
-        await api.fetchApi("/wilddivide/add_slot", {
-            method: "POST",
-            body: JSON.stringify({
-                name: slotElement.value,
-                values: "- " + valueElements.map((element) => element.value).join("\n- "),
-            }),
-        });
-        await refresh_wildcards();
+        let values = null;
+        if (is_group) {
+            values = "- GROUP";
+        } else {
+            values = "- " + valueElements.map((element) => element.value).join("\n- ");
+        }
+        await save_slot(slotElement.value, values);
         dialog.close();
     });
     return dialog;
-}
-
-function show_edit_dialog(dialog, title, widgetName, disabled) {
-    slotElement = document.createElement("input");
-    Object.assign(slotElement.style, {
-        width: "300px",
-        margin: "0",
-        padding: "3px 5px",
-        border: "1px solid var(--p-form-field-border-color)",
-    });
-    slotElement.disabled = disabled;
-    slotElement.value = widgetName;
-    const values = widgetName == "" ? [""] : wildcards_dict[`m/${widgetName}`];
-    show_dialog_internal(dialog, title, slotElement, values, disabled);
 }
 
 function setup_common_dialog(okLabel, okCallback) {
@@ -502,7 +535,21 @@ function setup_common_dialog(okLabel, okCallback) {
     return dialog;
 }
 
-function show_dialog_internal(dialog, title, slotNameElement, values, disabled) {
+function show_dialog(dialog, title, widgetName, dialogType) {
+    slotElement = document.createElement("input");
+    Object.assign(slotElement.style, {
+        width: "300px",
+        margin: "0",
+        padding: "3px 5px",
+        border: "1px solid var(--p-form-field-border-color)",
+    });
+    slotElement.disabled = (dialogType === DialogType.EDIT);
+    slotElement.value = widgetName;
+    const values = widgetName == "" ? [""] : wildcards_dict[`m/${widgetName}`];
+    show_dialog_internal(dialog, title, slotElement, values, dialogType);
+}
+
+function show_dialog_internal(dialog, title, slotNameElement, values, dialogType) {
     const container = document.createElement("div");
     Object.assign(container.style, {
         display: "grid",
@@ -516,10 +563,14 @@ function show_dialog_internal(dialog, title, slotNameElement, values, disabled) 
     Object.assign(slotLabel.style, {
         textAlign: "right",
     });
-    slotLabel.textContent = "Slot  ";
+    if (dialogType === DialogType.ADD || dialogType === DialogType.EDIT) {
+        slotLabel.textContent = "Slot";
+    } else {
+        slotLabel.textContent = "Group";
+    }
 
     let deleteSlotButton = null;
-    if (disabled) {
+    if (dialogType === DialogType.EDIT) {
         deleteSlotButton = document.createElement("button");
         Object.assign(deleteSlotButton.style, {
             fontSize: "14px",
@@ -532,46 +583,63 @@ function show_dialog_internal(dialog, title, slotNameElement, values, disabled) 
             color: "var(--p-form-field-float-label-color)",
         });
         deleteSlotButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"> <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /> </svg>';
-        deleteSlotButton.onclick = async function () {
-            if (window.confirm("Are you sure you want to delete this slot?")) {
-                await api.fetchApi("/wilddivide/delete_slot", {
-                    method: "POST",
-                    body: JSON.stringify({
-                        name: slotNameElement.value,
-                    }),
-                });
-                await refresh_wildcards();
-                dialog.close();
-            }
+        deleteSlotButton.onclick = async function() {
+            await delete_slot(slotNameElement.value);
+            dialog.close();
         };
     } else {
         deleteSlotButton = document.createElement("span");
     }
     container.append(slotLabel, slotNameElement, deleteSlotButton);
 
-    const marker = document.createElement("span");
-    const addButton = document.createElement("button");
-    Object.assign(addButton.style, {
-        fontSize: "14px",
-        backgroundColor: "transparent",
-    });
-    addButton.textContent = "Add new value (Ctrl+⏎)";
-    addButton.onclick = function () {
-        const valueElement = add_new_value("-", "", marker);
-        valueElement.focus();
-    };
-    container.append(marker, addButton);
-
     valueElements = [];
-    values.forEach((value) => {
-        add_new_value("-", value, marker);
-    });
+    if (dialogType === DialogType.ADD || dialogType === DialogType.EDIT) {
+        const marker = document.createElement("span");
+        const addButton = document.createElement("button");
+        Object.assign(addButton.style, {
+            fontSize: "14px",
+            backgroundColor: "transparent",
+        });
+        addButton.textContent = "Add new value (shift+⏎)";
+        addButton.onclick = function () {
+            const valueElement = add_new_value("-", "", marker);
+            valueElement.focus();
+        };
+        container.append(marker, addButton);
+
+        values.forEach((value) => {
+            add_new_value("-", value, marker);
+        });
+    }
 
     dialog.show(title);
     Object.assign(dialog.textElement.style, {
         marginTop: "0",
     });
     dialog.textElement.append(container);
+    if (dialogType === DialogType.EDIT) {
+        valueElements[valueElements.length - 1].focus();
+    } else {
+        slotNameElement.focus();
+    }
+}
+
+async function save_slot(name, values) {
+    await api.fetchApi("/wilddivide/add_slot", {
+        method: "POST",
+        body: JSON.stringify({ name, values }),
+    });
+    await refresh_wildcards();
+}
+
+async function delete_slot(name) {
+    if (window.confirm("Are you sure you want to delete this slot?")) {
+        await api.fetchApi("/wilddivide/delete_slot", {
+            method: "POST",
+            body: JSON.stringify({ name }),
+        });
+        await refresh_wildcards();
+    }
 }
 
 function add_new_value(label, value, marker) {
@@ -596,8 +664,8 @@ function add_new_value(label, value, marker) {
     
     // Ctrl+Enter to add new value
     valueElement.addEventListener("keydown", function(e) {
-        if (e.ctrlKey && e.key === "Enter") {
-            e.preventDefault(); // 기본 동작 방지
+        if (e.shiftKey && e.key === "Enter") {
+            e.preventDefault();
             const valueElement = add_new_value("-", "", marker);
             valueElement.focus();
         }
@@ -637,3 +705,44 @@ function add_new_value(label, value, marker) {
     marker.before(labelElement, valueElement, deleteButton);
     return valueElement;
 }
+
+function create_draggable_container(widgetName) {
+    // Create widget container
+    const container = document.createElement("div");
+    Object.assign(container.style, {
+        display: "flex",
+        flexDirection: "row",
+        gap: "2px",
+        border: "none",
+        cursor: "grab",
+        userSelect: "none",
+    });
+    container.draggable = true;
+    container.addEventListener("dragstart", (e) => {
+        e.target.style.opacity = "0.4";
+        fromKey = widgetName;
+    });
+    container.addEventListener("dragend", (e) => {
+        e.target.style.opacity = "1";
+    });
+    container.addEventListener("dragover", (e) => {
+        e.preventDefault();
+    });
+    container.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        const toKey = e.target.tagName === "LABEL" ? e.target.textContent : e.target.closest('.widget-container').querySelector('label').textContent;
+        console.log("reorder", fromKey, toKey);
+        await api.fetchApi("/wilddivide/reorder_slot", {
+            method: "POST",
+            body: JSON.stringify({
+                from: fromKey,
+                to: toKey,
+            }),
+        });
+        await refresh_wildcards();
+        fromKey = null;
+    });
+    container.classList.add('widget-container');
+    return container;
+}
+
