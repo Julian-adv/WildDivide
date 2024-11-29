@@ -460,11 +460,16 @@ function show_group_dialog() {
 function setup_dialog(dialogType) {
     const dialog = setup_common_dialog(dialogType, "Save", async function (dialog) {
         let values = "- " + dialog.valueElements.map((element) => element.value).join("\n- ");
-        const key = dialog.groupElement.value ?
-            `${dialog.groupElement.value}/${dialog.slotElement.value}` :
-            dialog.slotElement.value;
-        await save_slot(key, values);
-        dialog.close();
+        const key = key_from_dialog(dialog);
+        // check if key exists
+        if (key == "") {
+            alert_message(dialog, "Key cannot be empty");
+        } else if (wildcards_dict[`m/${key}`]) {
+            alert_message(dialog, "Key already exists");
+        } else {
+            await save_slot(key, values);
+            dialog.close();
+        }
     });
     return dialog;
 }
@@ -501,6 +506,26 @@ function setup_common_dialog(dialogType, okLabel, okCallback) {
         dialog.close();
     };
     dialog.element.prepend(closeButton);
+
+    // Alert container
+    const alertContainer = document.createElement("div");
+    Object.assign(alertContainer.style, {
+        display: "flex",
+        width: "100%",
+        height: "35px",
+    });
+    dialog.alertMessage = document.createElement("p");
+    dialog.alertMessage.style.cssText = `
+        font-size: 14px;
+        color: var(--error-color);
+        width: 100%;
+        height: 35px;
+        text-align: center;
+        margin: 0;
+    `;
+    dialog.alertMessage.textContent = "";
+    alertContainer.append(dialog.alertMessage);
+    dialog.element.append(alertContainer);
 
     // Button container
     const buttonContainer = document.createElement("div");
@@ -546,6 +571,9 @@ function show_dialog(dialog, title, groupName, widgetName) {
         alignItems: "baseline",
         gap: "0px 2px",
         marginTop: "10px",
+        maxHeight: "60vh",
+        overflowY: "auto",
+        paddingRight: "10px"
     });
 
     // Group label
@@ -588,10 +616,8 @@ function show_dialog(dialog, title, groupName, widgetName) {
         dialog.slotElement.value = "";
     }
     
-    // prevent '/' input
-    dialog.slotElement.addEventListener('input', (e) => {
-        e.target.value = e.target.value.replace(/\//g, '');
-    });
+    prevent_invalid_input(dialog.groupElement);
+    prevent_invalid_input(dialog.slotElement);
     
     // Delete button
     let deleteSlotButton = null;
@@ -609,7 +635,7 @@ function show_dialog(dialog, title, groupName, widgetName) {
         });
         deleteSlotButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"> <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /> </svg>';
         deleteSlotButton.onclick = async function() {
-            await delete_slot(dialog.slotElement.value);
+            await delete_slot(key_from_dialog(dialog));
             dialog.close();
         };
     } else {
@@ -631,10 +657,7 @@ function show_dialog(dialog, title, groupName, widgetName) {
     };
     container.append(marker, addButton);
 
-    const values = widgetName == "" ? [""] :
-        (groupName == "" ?
-            wildcards_dict[`m/${widgetName}`] :
-            wildcards_dict[`${groupName}/${widgetName}`]);
+    const values = widgetName == "" ? [""] : get_values_array(groupName, widgetName);
 
     values.forEach((value) => {
         add_new_value(dialog, "-", value, marker);
@@ -643,6 +666,7 @@ function show_dialog(dialog, title, groupName, widgetName) {
     dialog.show(title);
     Object.assign(dialog.textElement.style, {
         marginTop: "0",
+        marginBottom: "10px",
     });
     dialog.textElement.append(container);
     if (dialog.type === DialogType.EDIT) {
@@ -652,6 +676,28 @@ function show_dialog(dialog, title, groupName, widgetName) {
     } else {
         dialog.slotElement.focus();
     }
+}
+
+function alert_message(dialog, message) {
+    dialog.alertMessage.textContent = message;
+    setTimeout(() => {
+        dialog.alertMessage.textContent = "";
+    }, 4000);
+}
+
+function key_from_dialog(dialog) {
+    if (dialog.slotElement.value == "") {
+        return "";
+    }
+    return dialog.groupElement.value ?
+        `${dialog.groupElement.value}/${dialog.slotElement.value}` :
+        dialog.slotElement.value;
+}
+
+function prevent_invalid_input(element) {
+    element.addEventListener('input', (e) => {
+        e.target.value = e.target.value.replace(/[^a-zA-Z0-9_-]/g, '');
+    });
 }
 
 async function save_slot(name, values) {
@@ -692,7 +738,7 @@ function add_new_value(dialog, label, value, marker) {
     });
     valueElement.value = value;
     
-    // Ctrl+Enter to add new value
+    // Shift+Enter to add new value
     valueElement.addEventListener("keydown", function(e) {
         if (e.shiftKey && e.key === "Enter") {
             e.preventDefault();
@@ -761,7 +807,12 @@ function create_draggable_container(widgetName) {
     container.addEventListener("drop", async (e) => {
         e.preventDefault();
         const toKey = e.target.tagName === "LABEL" ? e.target.textContent : e.target.closest('.widget-container').querySelector('label').textContent;
-        console.log("reorder", fromKey, toKey);
+        const from_group = remove_last_key(fromKey);
+        const to_group = remove_last_key(toKey);
+        if (from_group !== to_group) {
+            await copy_slot(fromKey, toKey);
+            return;
+        }
         await api.fetchApi("/wilddivide/reorder_slot", {
             method: "POST",
             body: JSON.stringify({
@@ -776,3 +827,44 @@ function create_draggable_container(widgetName) {
     return container;
 }
 
+function remove_last_key(key) {
+    return key.split('/').slice(0, -1).join('/');
+}
+
+// copy slot from one group to another
+async function copy_slot(fromKey, toKey) {
+    const [from_group, from_key] = split_group_key(fromKey);
+    const [to_group, to_key] = split_group_key(toKey);
+    const name = join_group_key(to_group, from_key);
+    const values = get_values_string(fromKey);
+    
+    // key exists?
+    if (wildcards_dict[`m/${name}`]) {
+        return;
+    }
+
+    await api.fetchApi("/wilddivide/add_slot", {
+        method: "POST",
+        body: JSON.stringify({ name, values }),
+    });
+    await refresh_wildcards();
+}
+
+function get_values_string(key) {
+    return '- ' + wildcards_dict[`m/${key}`].join("\n- ");
+}
+
+function get_values_array(group, key) {
+    return wildcards_dict['m/' + join_group_key(group, key)];
+}
+
+function split_group_key(key) {
+    if (key.includes('/')) {
+        return key.split('/');
+    }
+    return ["", key];
+}
+
+function join_group_key(group, key) {
+    return group == "" ? key : `${group}/${key}`;
+}

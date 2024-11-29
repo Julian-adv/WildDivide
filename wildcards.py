@@ -390,15 +390,15 @@ def add_slot(name, values):
     # find proper position
     index = -1
     keys = list(local_wildcard_dict.keys())
+    group_name = remove_last_key(slot_name) + '/'
     if '/' in name:
-        group_name = remove_last_key(slot_name) + '/'
         for i in range(len(keys)-1, -1, -1):
             if keys[i].startswith(group_name):
                 index = i
                 break
     else:
         for i in range(len(keys)-1, -1, -1):
-            if keys[i].startswith(slot_name) and keys[i].count('/') == 1:
+            if keys[i].startswith(group_name) and keys[i].count('/') == 1:
                 index = i
                 break
 
