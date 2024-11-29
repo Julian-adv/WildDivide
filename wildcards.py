@@ -398,7 +398,7 @@ def add_slot(name, values):
                 break
     else:
         for i in range(len(keys)-1, -1, -1):
-            if keys[i].startswith("m/") and keys[i].count('/') == 1:
+            if keys[i].startswith(slot_name) and keys[i].count('/') == 1:
                 index = i
                 break
 
@@ -442,7 +442,6 @@ def reorder_slot(from_key, to_key):
 
 def save_wildcard_dict(wildcard_dict):
     m_wildcard_dict = {k: v for k, v in wildcard_dict.items() if k.startswith("m/")}
-    m_wildcard_dict = convert_group_to_dict(m_wildcard_dict)
     m_wildcard_dict_new = {}
     for k, v in m_wildcard_dict.items():
         if "/" in k:

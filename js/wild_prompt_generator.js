@@ -424,8 +424,6 @@ function set_all_random(node) {
 let addDialog = null;
 let editDialog = null;
 let groupDialog = null;
-let slotElement = null;
-let valueElements = [];
 
 const DialogType = {
     ADD: 0,
@@ -435,41 +433,46 @@ const DialogType = {
 
 function show_add_dialog() {
     if (!addDialog) {
-        addDialog = setup_dialog(false);
+        addDialog = setup_dialog(DialogType.ADD);
     }
-    show_dialog(addDialog, "Add Slot", "", DialogType.ADD);
+    show_dialog(addDialog, "Add Slot", group_name, "");
 }
 
 function show_edit_dialog(widgetName) {
     if (!editDialog) {
-        editDialog = setup_dialog(false);
+        editDialog = setup_dialog(DialogType.EDIT);
     }
-    show_dialog(editDialog, "Edit Slot", widgetName, DialogType.EDIT);
+    let groupName = "";
+    if (widgetName.includes("/")) {
+        [groupName, widgetName] = widgetName.split("/");
+    }
+
+    show_dialog(editDialog, "Edit Slot", groupName, widgetName);
 }
 
 function show_group_dialog() {
     if (!groupDialog) {
-        groupDialog = setup_dialog(true);
+        groupDialog = setup_dialog(DialogType.GROUP);
     }
-    show_dialog(groupDialog, "Add Group", "", DialogType.GROUP);
+    show_dialog(groupDialog, "Add Group", "", "");
 }
 
-function setup_dialog(is_group) {
-    const dialog = setup_common_dialog("Save", async function () {
-        let values = null;
-        if (is_group) {
-            values = "- GROUP";
-        } else {
-            values = "- " + valueElements.map((element) => element.value).join("\n- ");
-        }
-        await save_slot(slotElement.value, values);
+function setup_dialog(dialogType) {
+    const dialog = setup_common_dialog(dialogType, "Save", async function (dialog) {
+        let values = "- " + dialog.valueElements.map((element) => element.value).join("\n- ");
+        const key = dialog.groupElement.value ?
+            `${dialog.groupElement.value}/${dialog.slotElement.value}` :
+            dialog.slotElement.value;
+        await save_slot(key, values);
         dialog.close();
     });
     return dialog;
 }
 
-function setup_common_dialog(okLabel, okCallback) {
+function setup_common_dialog(dialogType, okLabel, okCallback) {
     const dialog = new app.ui.dialog.constructor();
+    dialog.type = dialogType;
+
     dialog.element.classList.add("comfy-settings");
     Object.assign(dialog.element.style, {
         flexDirection: "column",
@@ -516,7 +519,7 @@ function setup_common_dialog(okLabel, okCallback) {
         paddingBottom: "2px",
     });
     okButton.textContent = okLabel;
-    okButton.onclick = okCallback;
+    okButton.onclick = () => okCallback(dialog);
     buttonContainer.append(okButton);
 
     // Cancel button
@@ -535,21 +538,7 @@ function setup_common_dialog(okLabel, okCallback) {
     return dialog;
 }
 
-function show_dialog(dialog, title, widgetName, dialogType) {
-    slotElement = document.createElement("input");
-    Object.assign(slotElement.style, {
-        width: "300px",
-        margin: "0",
-        padding: "3px 5px",
-        border: "1px solid var(--p-form-field-border-color)",
-    });
-    slotElement.disabled = (dialogType === DialogType.EDIT);
-    slotElement.value = widgetName;
-    const values = widgetName == "" ? [""] : wildcards_dict[`m/${widgetName}`];
-    show_dialog_internal(dialog, title, slotElement, values, dialogType);
-}
-
-function show_dialog_internal(dialog, title, slotNameElement, values, dialogType) {
+function show_dialog(dialog, title, groupName, widgetName) {
     const container = document.createElement("div");
     Object.assign(container.style, {
         display: "grid",
@@ -559,18 +548,54 @@ function show_dialog_internal(dialog, title, slotNameElement, values, dialogType
         marginTop: "10px",
     });
 
+    // Group label
+    const groupLabel = document.createElement("label");
+    Object.assign(groupLabel.style, {
+        textAlign: "right",
+    });
+    groupLabel.textContent = "Group";
+
+    dialog.groupElement = document.createElement("input");
+    Object.assign(dialog.groupElement.style, {
+        width: "300px",
+        margin: "0",
+        padding: "3px 5px",
+        border: "1px solid var(--p-form-field-border-color)",
+    });
+    dialog.groupElement.value = groupName || "";
+    dialog.groupElement.disabled = (dialog.type === DialogType.EDIT);
+
+    container.append(groupLabel, dialog.groupElement, document.createElement("span"));
+
+    // Slot label
     const slotLabel = document.createElement("label");
     Object.assign(slotLabel.style, {
         textAlign: "right",
     });
-    if (dialogType === DialogType.ADD || dialogType === DialogType.EDIT) {
-        slotLabel.textContent = "Slot";
-    } else {
-        slotLabel.textContent = "Group";
-    }
+    slotLabel.textContent = "Slot";
 
+    dialog.slotElement = document.createElement("input");
+    Object.assign(dialog.slotElement.style, {
+        width: "300px",
+        margin: "0",
+        padding: "3px 5px",
+        border: "1px solid var(--p-form-field-border-color)",
+    });
+    dialog.slotElement.disabled = (dialog.type === DialogType.EDIT);
+    if (dialog.type === DialogType.EDIT) {
+        dialog.slotElement.value = widgetName;
+    } else {
+        dialog.slotElement.value = "";
+    }
+    
+    // prevent '/' input
+    dialog.slotElement.addEventListener('input', (e) => {
+        e.target.value = e.target.value.replace(/\//g, '');
+    });
+    
+    // Delete button
     let deleteSlotButton = null;
-    if (dialogType === DialogType.EDIT) {
+    if (dialog.type === DialogType.EDIT) {
         deleteSlotButton = document.createElement("button");
         Object.assign(deleteSlotButton.style, {
             fontSize: "14px",
@@ -584,43 +609,48 @@ function show_dialog_internal(dialog, title, slotNameElement, values, dialogType
         });
         deleteSlotButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"> <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /> </svg>';
         deleteSlotButton.onclick = async function() {
-            await delete_slot(slotNameElement.value);
+            await delete_slot(dialog.slotElement.value);
             dialog.close();
         };
     } else {
         deleteSlotButton = document.createElement("span");
     }
-    container.append(slotLabel, slotNameElement, deleteSlotButton);
+    container.append(slotLabel, dialog.slotElement, deleteSlotButton);
 
-    valueElements = [];
-    if (dialogType === DialogType.ADD || dialogType === DialogType.EDIT) {
-        const marker = document.createElement("span");
-        const addButton = document.createElement("button");
-        Object.assign(addButton.style, {
-            fontSize: "14px",
-            backgroundColor: "transparent",
-        });
-        addButton.textContent = "Add new value (shift+⏎)";
-        addButton.onclick = function () {
-            const valueElement = add_new_value("-", "", marker);
-            valueElement.focus();
-        };
-        container.append(marker, addButton);
+    dialog.valueElements = [];
+    const marker = document.createElement("span");
+    const addButton = document.createElement("button");
+    Object.assign(addButton.style, {
+        fontSize: "14px",
+        backgroundColor: "transparent",
+    });
+    addButton.textContent = "Add new value (shift+⏎)";
+    addButton.onclick = function () {
+        const valueElement = add_new_value(dialog, "-", "", marker);
+        valueElement.focus();
+    };
+    container.append(marker, addButton);
 
-        values.forEach((value) => {
-            add_new_value("-", value, marker);
-        });
-    }
+    const values = widgetName == "" ? [""] :
+        (groupName == "" ?
+            wildcards_dict[`m/${widgetName}`] :
+            wildcards_dict[`${groupName}/${widgetName}`]);
+
+    values.forEach((value) => {
+        add_new_value(dialog, "-", value, marker);
+    });
 
     dialog.show(title);
     Object.assign(dialog.textElement.style, {
         marginTop: "0",
     });
     dialog.textElement.append(container);
-    if (dialogType === DialogType.EDIT) {
-        valueElements[valueElements.length - 1].focus();
+    if (dialog.type === DialogType.EDIT) {
+        dialog.valueElements[dialog.valueElements.length - 1].focus();
+    } else if (dialog.type === DialogType.GROUP) {
+        dialog.groupElement.focus();
     } else {
-        slotNameElement.focus();
+        dialog.slotElement.focus();
     }
 }
 
@@ -642,7 +672,7 @@ async function delete_slot(name) {
     }
 }
 
-function add_new_value(label, value, marker) {
+function add_new_value(dialog, label, value, marker) {
     const labelElement = document.createElement("label");
     Object.assign(labelElement.style, {
         textAlign: "right",
@@ -666,12 +696,12 @@ function add_new_value(label, value, marker) {
     valueElement.addEventListener("keydown", function(e) {
         if (e.shiftKey && e.key === "Enter") {
             e.preventDefault();
-            const valueElement = add_new_value("-", "", marker);
+            const valueElement = add_new_value(dialog, "-", "", marker);
             valueElement.focus();
         }
     });
     
-    valueElements.push(valueElement);
+    dialog.valueElements.push(valueElement);
 
     const adjustHeight = function () {
         valueElement.style.height = "auto";
@@ -697,7 +727,7 @@ function add_new_value(label, value, marker) {
     });
     deleteButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"> <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /> </svg>';
     deleteButton.onclick = function() {
-        valueElements.splice(valueElements.indexOf(valueElement), 1);
+        dialog.valueElements.splice(dialog.valueElements.indexOf(valueElement), 1);
         labelElement.remove();
         valueElement.remove();
         deleteButton.remove();
