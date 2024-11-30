@@ -374,11 +374,11 @@ function add_buttons_widget(node) {
 
     const buttons = [
         {
-            text: "⏰ Show last generated",
+            text: "🎲 Show random selections",
             onClick: () => show_last_generated(node)
         },
         {
-            text: "🔍 Get last generated",
+            text: "📥 Get last random values",
             onClick: () => set_last_generated(node)
         },
         {
