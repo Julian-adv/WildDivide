@@ -30,7 +30,7 @@ class WildPromptGenerator:
     def generate_prompt(self, **kwargs):
         global last_generated
         prompt, last_generated = wildcards.process("__m/template__", kwargs["seed"], kwargs)
-        return (prompt,)
+        return { "ui": { "last_generated": last_generated.items() }, "result": (prompt, ) }
 
 def get_last_generated():
     global last_generated

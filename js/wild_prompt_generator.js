@@ -15,6 +15,15 @@ let generator_node = null;
 
 app.registerExtension({
     name: "Wild.Prompt.Generator",
+    async beforeRegisterNodeDef(nodeType, nodeData, app) {
+        if (nodeType.comfyClass == "WildPromptGenerator") {
+            const onExecuted = nodeType.prototype.onExecuted;
+            nodeType.prototype.onExecuted = (args) => {
+                update_last_generated(generator_node, args.last_generated);
+                return onExecuted?.apply(this, arguments);
+            };
+        }
+    },
     nodeCreated(node, app) {
         if (node.comfyClass == "WildPromptGenerator") {
             generator_node = node;
@@ -71,6 +80,13 @@ function calculateContextMenuPosition(x, y, element, contextMenu) {
         ny = rect.top - contextMenuHeight;
     }
     return [nx, ny];
+}
+
+function calc_tooltip_position(el, tooltip) {
+    const rect = el.getBoundingClientRect();
+    const x = rect.right - tooltip.offsetWidth;
+    const y = rect.top;
+    return [x, y];
 }
 
 let fromKey = null;
@@ -167,8 +183,8 @@ function add_combo_widget(node, widgetName, value, values) {
     combo.append(inputLabel);
 
     // Create select element
-    const selectEl = document.createElement("span");
-    Object.assign(selectEl.style, {
+    const select_elem = document.createElement("span");
+    Object.assign(select_elem.style, {
         width: "auto",
         minWidth: "48px",
         minHeight: "14px",
@@ -186,8 +202,8 @@ function add_combo_widget(node, widgetName, value, values) {
         color: "var(--p-surface-0)",
         flex: "1 1 0"
     });
-    setValueColor(selectEl, value);
-    combo.append(selectEl);
+    setValueColor(select_elem, value);
+    combo.append(select_elem);
     container.append(combo);
 
     // Create context menu
@@ -203,10 +219,10 @@ function add_combo_widget(node, widgetName, value, values) {
     });
 
     let isMouseDown = false;
-    selectEl.addEventListener('click', (e) => {
+    select_elem.addEventListener('click', (e) => {
         isMouseDown = true;
         contextMenu.style.display = "block";
-        const [x, y] = calculateContextMenuPosition(e.clientX, e.clientY, selectEl, contextMenu);
+        const [x, y] = calculateContextMenuPosition(e.clientX, e.clientY, select_elem, contextMenu);
         contextMenu.style.left = `${x}px`;
         contextMenu.style.top = `${y}px`;
     });
@@ -237,7 +253,7 @@ function add_combo_widget(node, widgetName, value, values) {
             option.style.backgroundColor = "var(--p-form-field-background)";
         });
         option.addEventListener('click', () => {
-            setValueColor(selectEl, v);
+            setValueColor(select_elem, v);
             contextMenu.style.display = "none";
             isMouseDown = false;
         });
@@ -265,10 +281,10 @@ function add_combo_widget(node, widgetName, value, values) {
     // Create widget
     const widget = node.addDOMWidget(widgetName, 'mycombo', container, {
         getValue() {
-            return selectEl.textContent;
+            return select_elem.textContent;
         },
         setValue(v) {
-            setValueColor(selectEl, v);
+            setValueColor(select_elem, v);
         },
         getHeight() {
             return 24;
@@ -282,8 +298,12 @@ function add_combo_widget(node, widgetName, value, values) {
         }
     });
     widget.container = container;
+    widget.select_elem = select_elem;
     widget.onRemove = () => {
         container.remove();
+        if (widget.tooltip) {
+            widget.tooltip.remove();
+        }
     };
 }
 
@@ -354,6 +374,10 @@ function add_buttons_widget(node) {
 
     const buttons = [
         {
+            text: "⏰ Show last generated",
+            onClick: () => show_last_generated(node)
+        },
+        {
             text: "🔍 Get last generated",
             onClick: () => set_last_generated(node)
         },
@@ -402,6 +426,88 @@ function add_buttons_widget(node) {
     };
 }
 
+let tooltips_shown = false;
+
+// Show last generated
+async function show_last_generated(node) {
+    if (tooltips_shown) {
+        clear_tooltips(node);
+        tooltips_shown = false;
+        return;
+    }
+
+    tooltips_shown = true;
+    let res = await api.fetchApi("/wilddivide/last_generated");
+    let data = await res.json();
+
+    create_tooltips(node, data.data);
+}
+
+function update_last_generated(node, last_generated) {
+    if (!tooltips_shown) {
+        return;
+    }
+    clear_tooltips(node);
+    
+    // last_generated is array of [widgetName, value]
+    const last = {};
+    for (const [widgetName, value] of last_generated) {
+        last[widgetName] = value;
+    }
+
+    create_tooltips(node, last);
+}
+
+function create_tooltips(node, last_generated) {
+    for (const widget of node.widgets.slice(2)) {
+        if (widget.name in last_generated) {
+            if (!widget.tooltip) {
+                widget.tooltip = create_tooltip(widget);
+            }
+            widget.tooltip.textContent = last_generated[widget.name];
+            set_tooltip_position(widget);
+        }
+    }
+}
+
+function create_tooltip(widget) {
+    const tooltip = document.createElement("div");
+    tooltip.style.cssText = `
+        display: -webkit-box;
+        align-items: center;
+        position: absolute;
+        background-color: var(--p-surface-800);
+        max-width: ${widget.select_elem.offsetWidth}px;
+        min-width: 50px;
+        height: 22px;
+        box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+        z-index: 100;
+        padding: 2px 5px;
+        top: 0;
+        left: 0;
+        font-size: 12px;
+        border: 1px solid var(--p-surface-500);
+        border-radius: 4px;
+        color: var(--p-surface-100);
+        text-overflow: ellipsis;
+        overflow: hidden;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+        text-align: right;
+    `;
+    const text = document.createElement("span");
+    tooltip.append(text);
+    document.body.append(tooltip);
+    return tooltip;
+}
+
+function set_tooltip_position(widget) {
+    widget.tooltip.style.display = "-webkit-box";
+    const [x, y] = calc_tooltip_position(widget.select_elem, widget.tooltip);
+    widget.tooltip.style.left = `${x}px`;
+    widget.tooltip.style.top = `${y-4}px`;
+}
+
 // Sets the last generated values to the widgets.
 async function set_last_generated(node) {
     let res = await api.fetchApi("/wilddivide/last_generated");
@@ -410,6 +516,15 @@ async function set_last_generated(node) {
     for (const widget of node.widgets.slice(2)) {
         if (widget.name in last_generated) {
             widget.value = last_generated[widget.name];
+        }
+    }
+    clear_tooltips(node);
+}
+
+function clear_tooltips(node) {
+    for (const widget of node.widgets.slice(2)) {
+        if (widget.tooltip) {
+            widget.tooltip.style.display = "none";
         }
     }
 }
@@ -464,7 +579,7 @@ function setup_dialog(dialogType) {
         // check if key exists
         if (key == "") {
             alert_message(dialog, "Key cannot be empty");
-        } else if (wildcards_dict[`m/${key}`]) {
+        } else if (wildcards_dict[`m/${key}`] && dialog.type !== DialogType.EDIT) {
             alert_message(dialog, "Key already exists");
         } else {
             await save_slot(key, values);
