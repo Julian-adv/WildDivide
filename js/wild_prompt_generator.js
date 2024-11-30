@@ -464,7 +464,7 @@ function create_tooltips(node, last_generated) {
             if (!widget.tooltip) {
                 widget.tooltip = create_tooltip(widget);
             }
-            widget.tooltip.textContent = last_generated[widget.name];
+            widget.tooltip.querySelector('span').textContent = last_generated[widget.name].replace(/\n/g, ' ');
             set_tooltip_position(widget);
         }
     }
@@ -473,7 +473,7 @@ function create_tooltips(node, last_generated) {
 function create_tooltip(widget) {
     const tooltip = document.createElement("div");
     tooltip.style.cssText = `
-        display: -webkit-box;
+        display: flex;
         align-items: center;
         position: absolute;
         background-color: var(--p-surface-800);
@@ -489,20 +489,21 @@ function create_tooltip(widget) {
         border: 1px solid var(--p-surface-500);
         border-radius: 4px;
         color: var(--p-surface-100);
-        text-overflow: ellipsis;
-        overflow: hidden;
-        -webkit-line-clamp: 1;
-        -webkit-box-orient: vertical;
         text-align: right;
     `;
     const text = document.createElement("span");
+    text.style.cssText = `
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+    `;
     tooltip.append(text);
     document.body.append(tooltip);
     return tooltip;
 }
 
 function set_tooltip_position(widget) {
-    widget.tooltip.style.display = "-webkit-box";
+    widget.tooltip.style.display = "flex";
     const [x, y] = calc_tooltip_position(widget.select_elem, widget.tooltip);
     widget.tooltip.style.left = `${x}px`;
     widget.tooltip.style.top = `${y-4}px`;
