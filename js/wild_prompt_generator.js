@@ -15,19 +15,25 @@ let generator_node = null;
 
 app.registerExtension({
     name: "Wild.Prompt.Generator",
-    async beforeRegisterNodeDef(nodeType, nodeData, app) {
-        if (nodeType.comfyClass == "WildPromptGenerator") {
-            const onExecuted = nodeType.prototype.onExecuted;
-            nodeType.prototype.onExecuted = (args) => {
-                update_last_generated(generator_node, args.last_generated);
-                return onExecuted?.apply(this, arguments);
-            };
-        }
-    },
+    // async beforeRegisterNodeDef(nodeType, nodeData, app) {
+    //     if (nodeType.comfyClass == "WildPromptGenerator") {
+    //         const onExecuted = nodeType.prototype.onExecuted;
+    //         nodeType.prototype.onExecuted = (args) => {
+    //             update_last_generated(generator_node, args.last_generated);
+    //             return onExecuted?.apply(this, arguments);
+    //         };
+    //     }
+    // },
     nodeCreated(node, app) {
         if (node.comfyClass == "WildPromptGenerator") {
             generator_node = node;
             setup_node(node);
+            api.addEventListener("status", (e) => {
+                // Update when image is generated
+                if (e.detail.exec_info.queue_remaining == 0) {
+                    update_last_generated(generator_node);
+                }
+            })
         }
     },
     async refreshComboInNodes(defs) {
@@ -443,19 +449,16 @@ async function show_last_generated(node) {
     create_tooltips(node, data.data);
 }
 
-function update_last_generated(node, last_generated) {
+async function update_last_generated(node) {
     if (!tooltips_shown) {
         return;
     }
     clear_tooltips(node);
     
-    // last_generated is array of [widgetName, value]
-    const last = {};
-    for (const [widgetName, value] of last_generated) {
-        last[widgetName] = value;
-    }
+    let res = await api.fetchApi("/wilddivide/last_generated");
+    let data = await res.json();
 
-    create_tooltips(node, last);
+    create_tooltips(node, data.data);
 }
 
 function create_tooltips(node, last_generated) {
