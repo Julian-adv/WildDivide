@@ -178,7 +178,7 @@ function add_combo_widget(node, widgetName, value, values) {
     Object.assign(inputLabel.style, {
         color: "var(--p-form-field-float-label-color)",
         flex: "0",
-        cursor: "grab",
+        cursor: "move",
     });
     combo.append(inputLabel);
 
@@ -838,8 +838,10 @@ function add_new_value(dialog, label, value, marker) {
     const labelElement = document.createElement("label");
     Object.assign(labelElement.style, {
         textAlign: "right",
+        cursor: "move",
     });
     labelElement.textContent = label;
+    labelElement.draggable = true;
 
     const valueElement = document.createElement("textarea");
     valueElement.classList.add("comfy-multiline-input");
@@ -853,6 +855,39 @@ function add_new_value(dialog, label, value, marker) {
         padding: "2px 5px",
     });
     valueElement.value = value;
+
+    // Setup drag and drop
+    labelElement.addEventListener("dragstart", (e) => {
+        e.dataTransfer.setData("text/plain", dialog.valueElements.indexOf(valueElement));
+    });
+    labelElement.addEventListener("dragover", (e) => {
+        e.preventDefault();
+    });
+    labelElement.addEventListener("drop", (e) => {
+        e.preventDefault();
+        const draggedIndex = parseInt(e.dataTransfer.getData("text/plain"));
+        const targetIndex = dialog.valueElements.indexOf(valueElement);
+        if (draggedIndex !== targetIndex) {
+            const draggedValueElement = dialog.valueElements[draggedIndex];
+            const draggedLabelElement = draggedValueElement.previousElementSibling;
+            const draggedDeleteButton = draggedValueElement.nextElementSibling;
+            
+            // Update array order
+            dialog.valueElements.splice(draggedIndex, 1);
+            dialog.valueElements.splice(targetIndex, 0, draggedValueElement);
+            
+            // Move DOM elements
+            if (targetIndex > draggedIndex) {
+                valueElement.nextElementSibling.after(draggedDeleteButton);
+                valueElement.nextElementSibling.after(draggedValueElement);
+                valueElement.nextElementSibling.after(draggedLabelElement);
+            } else {
+                labelElement.before(draggedLabelElement);
+                draggedLabelElement.after(draggedValueElement);
+                draggedValueElement.after(draggedDeleteButton);
+            }
+        }
+    });
     
     // Shift+Enter to add new value
     valueElement.addEventListener("keydown", function(e) {
@@ -906,7 +941,7 @@ function create_draggable_container(widgetName) {
         flexDirection: "row",
         gap: "2px",
         border: "none",
-        cursor: "grab",
+        cursor: "move",
         userSelect: "none",
     });
     container.draggable = true;
