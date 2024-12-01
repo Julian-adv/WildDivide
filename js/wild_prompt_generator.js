@@ -228,9 +228,11 @@ function add_combo_widget(node, widgetName, value, values) {
     const contextMenu = document.createElement("div");
     Object.assign(contextMenu.style, {
         display: "none",
-        position: "absolute",
+        position: "fixed",
         backgroundColor: "var(--p-form-field-background)",
         minWidth: "100px",
+        maxHeight: "70vh",
+        overflowY: "auto",
         boxShadow: "0px 8px 16px 0px rgba(0,0,0,0.2)",
         zIndex: "100",
         padding: "2px",
@@ -254,7 +256,7 @@ function add_combo_widget(node, widgetName, value, values) {
         let option = document.createElement("a");
         option.href = "#";
         Object.assign(option.style, {
-            backgroundColor: "var(--p-form-field-background)",
+            backgroundColor: "var(--comfy-menu-bg)",
             display: "block",
             padding: "2px",
             color: "var(--p-surface-0)",
@@ -266,7 +268,7 @@ function add_combo_widget(node, widgetName, value, values) {
             option.style.backgroundColor = "var(--p-form-field-hover-border-color)";
         });
         option.addEventListener('mouseout', () => {
-            option.style.backgroundColor = "var(--p-form-field-background)";
+            option.style.backgroundColor = "var(--comfy-menu-bg)";
         });
         option.addEventListener('click', () => {
             setValueColor(select_elem, v);
