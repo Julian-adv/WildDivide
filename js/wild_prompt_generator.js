@@ -31,7 +31,7 @@ app.registerExtension({
             api.addEventListener("status", (e) => {
                 // Update when image is generated
                 if (e.detail.exec_info.queue_remaining == 0) {
-                    update_last_generated(generator_node);
+                    update_last_generated(node);
                 }
             })
         }
@@ -158,6 +158,18 @@ function check_group_name(node, widgetName, value, values) {
     add_combo_widget(node, widgetName, value, values);
 }
 
+let tooltips_shown = false;
+let show_tooltips_button = null;
+
+function set_tooltips_shown(value) {
+    tooltips_shown = value;
+    if (tooltips_shown) {
+        show_tooltips_button.textContent = "👀 Hide random selections";
+    } else {
+        show_tooltips_button.textContent = "🎲 Show random selections";
+    }
+}
+
 function add_combo_widget(node, widgetName, value, values) {
     const container = create_draggable_container(widgetName);
 
@@ -224,19 +236,17 @@ function add_combo_widget(node, widgetName, value, values) {
         padding: "2px",
     });
 
-    let isMouseDown = false;
     select_elem.addEventListener('click', (e) => {
-        isMouseDown = true;
+        e.stopPropagation();
         contextMenu.style.display = "block";
         const [x, y] = calculateContextMenuPosition(e.clientX, e.clientY, select_elem, contextMenu);
         contextMenu.style.left = `${x}px`;
         contextMenu.style.top = `${y}px`;
     });
     document.addEventListener('click', (e) => {
-        if (!isMouseDown) {
-            contextMenu.style.display = "none";
-        }
-        isMouseDown = false
+        contextMenu.style.display = "none";
+        clear_tooltips(node);
+        set_tooltips_shown(false);
     });
 
     // Create menu items
@@ -381,7 +391,10 @@ function add_buttons_widget(node) {
     const buttons = [
         {
             text: "🎲 Show random selections",
-            onClick: () => show_last_generated(node)
+            onClick: () => show_last_generated(node),
+            onInit: (button) => {
+                show_tooltips_button = button;
+            }
         },
         {
             text: "📥 Get last random values",
@@ -401,7 +414,7 @@ function add_buttons_widget(node) {
         }
     ];
 
-    buttons.forEach(({text, onClick}) => {
+    buttons.forEach(({text, onClick, onInit}) => {
         const button = document.createElement("button");
         Object.assign(button.style, {
             border: "2px solid var(--border-color)",
@@ -411,7 +424,13 @@ function add_buttons_widget(node) {
             paddingBottom: "3px",
         });
         button.textContent = text;
-        button.onclick = onClick;
+        button.onclick = (e) => {
+            e.stopPropagation(); 
+            onClick();
+        };
+        if (onInit) {
+            onInit(button);
+        }
         container.append(button);
     });
 
@@ -432,17 +451,15 @@ function add_buttons_widget(node) {
     };
 }
 
-let tooltips_shown = false;
-
 // Show last generated
 async function show_last_generated(node) {
     if (tooltips_shown) {
         clear_tooltips(node);
-        tooltips_shown = false;
+        set_tooltips_shown(false);
         return;
     }
 
-    tooltips_shown = true;
+    set_tooltips_shown(true);
     let res = await api.fetchApi("/wilddivide/last_generated");
     let data = await res.json();
 
