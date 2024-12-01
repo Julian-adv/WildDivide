@@ -66,25 +66,45 @@ function setValueColor(el, value) {
     }
 }
 
-function calculateContextMenuPosition(x, y, element, contextMenu) {
-    const windowWidth = window.innerWidth;
-    const windowHeight = window.innerHeight;
+function calculate_context_menu_position(x, y, element, context_menu) {
+    const window_width = window.innerWidth;
+    const window_height = window.innerHeight;
     const rect = element.getBoundingClientRect();
-    let nx = rect.right - contextMenu.offsetWidth;
+    const context_menu_width = context_menu.offsetWidth;
+    const context_menu_height = context_menu.offsetHeight;
+    const margin_x = 40;
+    const margin_y = 44 + 16
+
+    // Get the position of the text node within the span
+    const text_node = Array.from(element.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
+    const range = document.createRange();
+    range.selectNode(text_node);
+    const text_rect = range.getBoundingClientRect();
+
+    // Align the left of the text with x and place it below
+    let nx = text_rect.left;
     let ny = rect.bottom;
-    const contextMenuWidth = contextMenu.offsetWidth;
-    const contextMenuHeight = contextMenu.offsetHeight;
-    if (contextMenuWidth > windowWidth - 50) {
-        nx = 50;
-    } else if (nx + contextMenuWidth > windowWidth - 50) {
-        nx = windowWidth - contextMenuWidth - 50;
+
+    // Adjust if the context menu goes beyond the right boundary
+    if (nx + context_menu_width > window_width - margin_x) {
+        nx = window_width - context_menu_width - margin_x;
     }
-    if (nx < 50) {
-        nx = x;
+
+    // Make sure the left has at least margin_x of space
+    if (nx < margin_x) {
+        nx = margin_x;
     }
-    if (ny + contextMenuHeight > windowHeight - 50) {
-        ny = rect.top - contextMenuHeight;
+
+    // If there is not enough space below, show it above
+    if (ny + context_menu_height > window_height - margin_y) {
+        ny = rect.top - context_menu_height;
     }
+
+    // Make sure the top has at least margin_y of space
+    if (ny < margin_y) {
+        ny = margin_y;
+    }
+
     return [nx, ny];
 }
 
@@ -97,6 +117,23 @@ function calc_tooltip_position(el, tooltip) {
 
 let fromKey = null;
 let group_name = null;
+let tooltips_shown = false;
+let show_tooltips_checkbox = null;
+let current_context_menu = null;
+
+function set_tooltips_shown(value) {
+    tooltips_shown = value;
+    if (show_tooltips_checkbox) {
+        show_tooltips_checkbox.checked = value;
+    }
+}
+
+function close_context_menu() {
+    if (current_context_menu) {
+        current_context_menu.style.display = "none";
+        current_context_menu = null;
+    }
+}
 
 // Sets up the node with the wildcards.
 function setup_node(node) {
@@ -156,18 +193,6 @@ function check_group_name(node, widgetName, value, values) {
         add_group_widget(node, group_name);
     }
     add_combo_widget(node, widgetName, value, values);
-}
-
-let tooltips_shown = false;
-let show_tooltips_button = null;
-
-function set_tooltips_shown(value) {
-    tooltips_shown = value;
-    if (tooltips_shown) {
-        show_tooltips_button.textContent = "👀 Hide random selections";
-    } else {
-        show_tooltips_button.textContent = "🎲 Show random selections";
-    }
 }
 
 function add_combo_widget(node, widgetName, value, values) {
@@ -240,15 +265,16 @@ function add_combo_widget(node, widgetName, value, values) {
 
     select_elem.addEventListener('click', (e) => {
         e.stopPropagation();
+        close_context_menu();
         contextMenu.style.display = "block";
-        const [x, y] = calculateContextMenuPosition(e.clientX, e.clientY, select_elem, contextMenu);
+        current_context_menu = contextMenu;
+        const [x, y] = calculate_context_menu_position(e.clientX, e.clientY, select_elem, contextMenu);
         contextMenu.style.left = `${x}px`;
         contextMenu.style.top = `${y}px`;
     });
-    document.addEventListener('click', (e) => {
-        contextMenu.style.display = "none";
-        clear_tooltips(node);
-        set_tooltips_shown(false);
+    document.addEventListener('click', () => {
+        close_context_menu();
+        set_tooltip_position_all(node);
     });
 
     // Create menu items
@@ -392,10 +418,36 @@ function add_buttons_widget(node) {
 
     const buttons = [
         {
-            text: "🎲 Show random selections",
-            onClick: () => show_last_generated(node),
+            text: "Show random selections",
+            onClick: () => {
+                show_last_generated(node);
+            },
             onInit: (button) => {
-                show_tooltips_button = button;
+                // Style button as flex container
+                Object.assign(button.style, {
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    paddingBottom: "0",
+                });
+                
+                // Create checkbox
+                show_tooltips_checkbox = document.createElement("input");
+                show_tooltips_checkbox.type = "checkbox";
+                show_tooltips_checkbox.checked = tooltips_shown;
+                Object.assign(show_tooltips_checkbox.style, {
+                    margin: "0",
+                    cursor: "pointer",
+                });
+                
+                // Prevent checkbox from triggering button click
+                show_tooltips_checkbox.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    tooltips_shown = show_tooltips_checkbox.checked;
+                });
+                
+                // Add checkbox to button
+                button.prepend(show_tooltips_checkbox);
             }
         },
         {
@@ -423,7 +475,7 @@ function add_buttons_widget(node) {
             borderRadius: "8px",
             fontSize: "12px",
             backgroundColor: "transparent",
-            paddingBottom: "3px",
+            paddingBottom: "2px",
         });
         button.textContent = text;
         button.onclick = (e) => {
@@ -522,6 +574,14 @@ function create_tooltip(widget) {
     tooltip.append(text);
     document.body.append(tooltip);
     return tooltip;
+}
+
+function set_tooltip_position_all(node) {
+    for (const widget of node.widgets.slice(2)) {
+        if (widget.tooltip && widget.tooltip.style.display !== "none") {
+            set_tooltip_position(widget);
+        }
+    }
 }
 
 function set_tooltip_position(widget) {
