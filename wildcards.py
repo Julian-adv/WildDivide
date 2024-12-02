@@ -12,7 +12,7 @@ wildcards_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "
 default_wildcards_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "wildcards"))
 WILDCARD_DICT_FILE = os.path.join(default_wildcards_path, "m.yaml")
 
-RE_WildCardQuantifier = re.compile(r"(?P<quantifier>\d+)#__(?P<keyword>[\w.\-+/*\\]+)__", re.IGNORECASE)
+RE_WildCardQuantifier = re.compile(r"(?P<quantifier>\d+)#__(?P<keyword>[\w.\-+/*\\]+?)__", re.IGNORECASE)
 wildcard_lock = threading.Lock()
 wildcard_dict = {}
 
@@ -35,7 +35,7 @@ def set_wildcard_dict(dict):
 
 
 def wildcard_normalize(x):
-    return x.replace("\\", "/").replace(" ", "-").lower()
+    return x.replace("\\", "/").replace(' ', '-').lower()
 
 
 def read_wildcard(k, v):
@@ -56,28 +56,27 @@ def read_wildcard_dict(wildcard_path):
     global wildcard_dict
     for root, directories, files in os.walk(wildcard_path, followlinks=True):
         for file in files:
-            if file.endswith(".txt"):
+            if file.endswith('.txt'):
                 file_path = os.path.join(root, file)
                 rel_path = os.path.relpath(file_path, wildcard_path)
                 key = wildcard_normalize(os.path.splitext(rel_path)[0])
 
                 try:
-                    with open(file_path, "r", encoding="ISO-8859-1") as f:
+                    with open(file_path, 'r', encoding="ISO-8859-1") as f:
                         lines = f.read().splitlines()
-                        wildcard_dict[key] = lines
+                        wildcard_dict[key] = [x for x in lines if not x.strip().startswith('#')]
                 except yaml.reader.ReaderError:
-                    with open(file_path, "r", encoding="UTF-8", errors="ignore") as f:
+                    with open(file_path, 'r', encoding="UTF-8", errors="ignore") as f:
                         lines = f.read().splitlines()
-                        wildcard_dict[key] = lines
-            elif file.endswith(".yaml"):
+                        wildcard_dict[key] = [x for x in lines if not x.strip().startswith('#')]
+            elif file.endswith('.yaml'):
                 file_path = os.path.join(root, file)
 
                 try:
-                    with open(file_path, "r", encoding="ISO-8859-1") as f:
+                    with open(file_path, 'r', encoding="ISO-8859-1") as f:
                         yaml_data = yaml.load(f, Loader=yaml.FullLoader)
                 except yaml.reader.ReaderError as e:
-                    print(f"Error reading {file_path}: {e}")
-                    with open(file_path, "r", encoding="UTF-8", errors="ignore") as f:
+                    with open(file_path, 'r', encoding="UTF-8", errors="ignore") as f:
                         yaml_data = yaml.load(f, Loader=yaml.FullLoader)
 
                 for k, v in yaml_data.items():
@@ -87,24 +86,24 @@ def read_wildcard_dict(wildcard_path):
 
 
 def process_comment_out(text):
-    lines = text.split("\n")
+    lines = text.split('\n')
 
     lines0 = []
     flag = False
     for line in lines:
-        if line.lstrip().startswith("#"):
+        if line.lstrip().startswith('#'):
             flag = True
             continue
 
         if len(lines0) == 0:
             lines0.append(line)
         elif flag:
-            lines0[-1] += " " + line
+            lines0[-1] += ' ' + line
             flag = False
         else:
             lines0.append(line)
 
-    return "\n".join(lines0)
+    return '\n'.join(lines0)
 
 
 def weighted_random_choice(items):
@@ -167,28 +166,28 @@ def process(text, seed=None, kwargs=None):
 
         def replace_option(match):
             nonlocal replacements_found
-            options = match.group(1).split("|")
+            options = match.group(1).split('|')
 
-            multi_select_pattern = options[0].split("$$")
+            multi_select_pattern = options[0].split('$$')
             select_range = None
-            select_sep = " "
-            range_pattern = r"(\d+)(-(\d+))?"
-            range_pattern2 = r"-(\d+)"
-            wildcard_pattern = r"__([\w.\-+/*\\]+)__"
+            select_sep = ' '
+            range_pattern = r'(\d+)(-(\d+))?'
+            range_pattern2 = r'-(\d+)'
+            wildcard_pattern = r"__([\w.\-+/*\\]+?)__"
 
             if len(multi_select_pattern) > 1:
                 r = re.match(range_pattern, options[0])
 
                 if r is None:
                     r = re.match(range_pattern2, options[0])
-                    a = "1"
+                    a = '1'
                     b = r.group(1).strip()
                 else:
                     a = r.group(1).strip()
                     b = r.group(3)
                     if b is not None:
                         b = b.strip()
-
+                        
                 if r is not None:
                     if b is not None and is_numeric_string(a) and is_numeric_string(b):
                         # PATTERN: num1-num2
@@ -217,7 +216,7 @@ def process(text, seed=None, kwargs=None):
             total_prob = 0
 
             for option in options:
-                parts = option.split("::", 1)
+                parts = option.split('::', 1)
                 if len(parts) == 2 and is_numeric_string(parts[0].strip()):
                     config_value = float(parts[0].strip())
                 else:
@@ -231,28 +230,23 @@ def process(text, seed=None, kwargs=None):
             if select_range is None:
                 select_count = 1
             else:
-                select_count = random_gen.integers(low=select_range[0], high=select_range[1] + 1, size=1)
+                select_count = random_gen.integers(low=select_range[0], high=select_range[1]+1, size=1)
 
             if select_count > len(options):
                 random_gen.shuffle(options)
                 selected_items = options
             else:
-                selected_items = random_gen.choice(
-                    options,
-                    p=normalized_probabilities,
-                    size=select_count,
-                    replace=False,
-                )
+                selected_items = random_gen.choice(options, p=normalized_probabilities, size=select_count, replace=False)
 
-            selected_items2 = [re.sub(r"^\s*[0-9.]+::", "", x, 1) for x in selected_items]
+            selected_items2 = [re.sub(r'^\s*[0-9.]+::', '', x, 1) for x in selected_items]
             replacement = select_sep.join(selected_items2)
-            if "::" in replacement:
+            if '::' in replacement:
                 pass
 
             replacements_found = True
             return replacement
 
-        pattern = r"{([^{}]*?)}"
+        pattern = r'{([^{}]*?)}'
         replaced_string = re.sub(pattern, replace_option, string)
 
         return replaced_string, replacements_found
@@ -315,8 +309,8 @@ def process(text, seed=None, kwargs=None):
         return last_generated[keyword]
 
     def replace_wildcard(string):
-        pattern = r"__([\w.\-+/*\\]+)__"
-        match = re.search(pattern, string)
+        pattern = r"__([\w.\-+/*\\]+?)__"
+        matches = re.findall(pattern, string)
 
         replacements_found = False
 
@@ -328,12 +322,12 @@ def process(text, seed=None, kwargs=None):
                 replacement = regexp_or_weighted_choice(local_wildcard_dict[keyword], string[:match.start()], keyword[2:])
                 replacements_found = True
                 string = string.replace(f"__{match_str}__", replacement, 1)
-            elif "*" in keyword:
-                subpattern = keyword.replace("*", ".*").replace("+", "\\+")
+            elif '*' in keyword:
+                subpattern = keyword.replace('*', '.*').replace('+', '\\+')
                 total_patterns = []
                 found = False
                 for k, v in local_wildcard_dict.items():
-                    if re.match(subpattern, k) is not None or re.match(subpattern, k + "/") is not None:
+                    if re.match(subpattern, k) is not None or re.match(subpattern, k+'/') is not None:
                         total_patterns += v
                         found = True
 
@@ -341,7 +335,7 @@ def process(text, seed=None, kwargs=None):
                     replacement = regexp_or_weighted_choice(total_patterns, string[:match.start()], keyword[2:])
                     replacements_found = True
                     string = string.replace(f"__{match_str}__", replacement, 1)
-            elif "/" not in keyword:
+            elif '/' not in keyword:
                 string_fallback = string.replace(f"__{match_str}__", f"__*/{match_str}__", 1)
                 string, replacements_found = replace_wildcard(string_fallback)
 
@@ -351,19 +345,14 @@ def process(text, seed=None, kwargs=None):
     stop_unwrap = False
     while not stop_unwrap and replace_depth > 1:
         replace_depth -= 1  # prevent infinite loop
-
+        
         option_quantifier = [e.groupdict() for e in RE_WildCardQuantifier.finditer(text)]
         for match in option_quantifier:
-            keyword = match["keyword"].lower()
-            quantifier = int(match["quantifier"]) if match["quantifier"] else 1
-            replacement = "__|__".join(
-                [
-                    keyword,
-                ]
-                * quantifier
-            )
-            wilder_keyword = keyword.replace("*", "\\*")
-            RE_TEMP = re.compile(rf"(?P<quantifier>\d+)#__(?P<keyword>{wilder_keyword})__", re.IGNORECASE)
+            keyword = match['keyword'].lower()
+            quantifier = int(match['quantifier']) if match['quantifier'] else 1
+            replacement = '__|__'.join([keyword,] * quantifier)
+            wilder_keyword = keyword.replace('*', '\\*')
+            RE_TEMP = re.compile(fr"(?P<quantifier>\d+)#__(?P<keyword>{wilder_keyword})__", re.IGNORECASE)
             text = RE_TEMP.sub(f"__{replacement}__", text)
 
         # pass1: replace options
@@ -475,7 +464,7 @@ def convert_group_to_dict(wildcard_dict):
     return group_dict
 
 def is_numeric_string(input_str):
-    return re.match(r"^-?\d+(\.\d+)?$", input_str) is not None
+    return re.match(r'^-?(\d*\.?\d+|\d+\.?\d*)$', input_str) is not None
 
 
 def safe_float(x):
@@ -486,18 +475,18 @@ def safe_float(x):
 
 
 def extract_lora_values(string):
-    pattern = r"<lora:([^>]+)>"
+    pattern = r'<lora:([^>]+)>'
     matches = re.findall(pattern, string)
 
     def touch_lbw(text):
-        return re.sub(r"LBW=[A-Za-z][A-Za-z0-9_-]*:", r"LBW=", text)
+        return re.sub(r'LBW=[A-Za-z][A-Za-z0-9_-]*:', r'LBW=', text)
 
-    items = [touch_lbw(match.strip(":")) for match in matches]
+    items = [touch_lbw(match.strip(':')) for match in matches]
 
     added = set()
     result = []
     for item in items:
-        item = item.split(":")
+        item = item.split(':')
 
         lora = None
         a = None
@@ -516,12 +505,12 @@ def extract_lora_values(string):
                     elif b is None:
                         b = float(sub_item)
                 elif sub_item.startswith("LBW="):
-                    for lbw_item in sub_item[4:].split(";"):
+                    for lbw_item in sub_item[4:].split(';'):
                         if lbw_item.startswith("A="):
                             lbw_a = safe_float(lbw_item[2:].strip())
                         elif lbw_item.startswith("B="):
                             lbw_b = safe_float(lbw_item[2:].strip())
-                        elif lbw_item.strip() != "":
+                        elif lbw_item.strip() != '':
                             lbw = lbw_item
 
         if a is None:
@@ -537,8 +526,8 @@ def extract_lora_values(string):
 
 
 def remove_lora_tags(string):
-    pattern = r"<lora:[^>]+>"
-    result = re.sub(pattern, "", string)
+    pattern = r'<lora:[^>]+>'
+    result = re.sub(pattern, '', string)
 
     return result
 
@@ -560,9 +549,9 @@ def process_pass1(pass1, lora_name_cache, model, clip, clip_encoder=None, seed=N
     pass2 = remove_lora_tags(pass1)
 
     for lora_name, model_weight, clip_weight, lbw, lbw_a, lbw_b in loras:
-        lora_name_ext = lora_name.split(".")
-        if ("." + lora_name_ext[-1]) not in folder_paths.supported_pt_extensions:
-            lora_name = lora_name + ".safetensors"
+        lora_name_ext = lora_name.split('.')
+        if ('.'+lora_name_ext[-1]) not in folder_paths.supported_pt_extensions:
+            lora_name = lora_name+".safetensors"
 
         orig_lora_name = lora_name
         lora_name = resolve_lora_name(lora_name_cache, lora_name)
@@ -579,40 +568,29 @@ def process_pass1(pass1, lora_name_cache, model, clip, clip_encoder=None, seed=N
                 return nodes.LoraLoader().load_lora(model, clip, lora_name, model_weight, clip_weight)
 
             if lbw is not None:
-                if "LoraLoaderBlockWeight //Inspire" not in nodes.NODE_CLASS_MAPPINGS:
+                if 'LoraLoaderBlockWeight //Inspire' not in nodes.NODE_CLASS_MAPPINGS:
                     # utils.try_install_custom_node(
                     #     'https://github.com/ltdrdata/ComfyUI-Inspire-Pack',
                     #     "To use 'LBW=' syntax in wildcards, 'Inspire Pack' extension is required.")
 
-                    print(
-                        f"'LBW(Lora Block Weight)' is given, but the 'Inspire Pack' is not installed. The LBW= attribute is being ignored."
-                    )
+                    print(f"'LBW(Lora Block Weight)' is given, but the 'Inspire Pack' is not installed. The LBW= attribute is being ignored.")
                     model, clip = default_lora()
                 else:
-                    cls = nodes.NODE_CLASS_MAPPINGS["LoraLoaderBlockWeight //Inspire"]
-                    model, clip, _ = cls().doit(
-                        model,
-                        clip,
-                        lora_name,
-                        model_weight,
-                        clip_weight,
-                        False,
-                        0,
-                        lbw_a,
-                        lbw_b,
-                        "",
-                        lbw,
-                    )
+                    cls = nodes.NODE_CLASS_MAPPINGS['LoraLoaderBlockWeight //Inspire']
+                    model, clip, _ = cls().doit(model, clip, lora_name, model_weight, clip_weight, False, 0, lbw_a, lbw_b, "", lbw)
             else:
                 model, clip = default_lora()
         else:
             print(f"LORA NOT FOUND: {orig_lora_name}")
 
     pass3 = [x.strip() for x in pass2.split("BREAK")]
-    pass3 = [x for x in pass3 if x != ""]
+    pass3 = [x for x in pass3 if x != '']
 
     if len(pass3) == 0:
-        pass3 = [""]
+        pass3 = ['']
+
+    pass3_str = [f'[{x}]' for x in pass3]
+    print(f"CLIP: {str.join(' + ', pass3_str)}")
 
     result = None
 
@@ -631,6 +609,7 @@ def process_pass1(pass1, lora_name_cache, model, clip, clip_encoder=None, seed=N
         processed.append(pass1)
         processed.append(pass2)
         processed.append(pass3)
+
     return model, clip, result
 
 def extract_options(text):
@@ -686,11 +665,11 @@ def process_with_loras(wildcard_opt, model, clip, clip_encoder=None, seed=None, 
 
 def starts_with_regex(pattern, text):
     regex = re.compile(pattern)
-    return bool(regex.match(text))
+    return regex.match(text)
 
 
 def split_to_dict(text):
-    pattern = r"\[([A-Za-z0-9_. ]+)\]([^\[]+)(?=\[|$)"
+    pattern = r'\[([A-Za-z0-9_. ]+)\]([^\[]+)(?=\[|$)'
     matches = re.findall(pattern, text)
 
     result_dict = {key: value.strip() for key, value in matches}
@@ -722,8 +701,8 @@ class WildcardChooserDict:
 
     def get(self, seg):
         text = ""
-        if "ALL" in self.items:
-            text = self.items["ALL"]
+        if 'ALL' in self.items:
+            text = self.items['ALL']
 
         if seg.label in self.items:
             text += self.items[seg.label]
@@ -732,7 +711,7 @@ class WildcardChooserDict:
 
 
 def split_string_with_sep(input_string):
-    sep_pattern = r"\[SEP(?:\:\w+)?\]"
+    sep_pattern = r'\[SEP(?:\:\w+)?\]'
 
     substrings = re.split(sep_pattern, input_string)
 
@@ -741,9 +720,9 @@ def split_string_with_sep(input_string):
     for i, substring in enumerate(substrings):
         result_list.append(substring)
         if i < len(matches):
-            if matches[i] == "[SEP]":
+            if matches[i] == '[SEP]':
                 result_list.append(None)
-            elif matches[i] == "[SEP:R]":
+            elif matches[i] == '[SEP:R]':
                 result_list.append(random.randint(0, 1125899906842624))
             else:
                 try:
@@ -757,29 +736,32 @@ def split_string_with_sep(input_string):
 
 
 def process_wildcard_for_segs(wildcard):
-    if wildcard.startswith("[LAB]"):
+    if wildcard.startswith('[LAB]'):
         raw_items = split_to_dict(wildcard)
 
         items = {}
         for k, v in raw_items.items():
             v = v.strip()
-            if v != "":
+            if v != '':
                 items[k] = v
 
-        return "LAB", WildcardChooserDict(items)
-
-    elif starts_with_regex(r"\[(ASC|DSC|RND)\]", wildcard):
-        mode = wildcard[1:4]
-        items = split_string_with_sep(wildcard[5:])
-
-        if mode == "RND":
-            random.shuffle(items)
-            return mode, WildcardChooser(items, True)
-        else:
-            return mode, WildcardChooser(items, False)
+        return 'LAB', WildcardChooserDict(items)
 
     else:
-        return None, WildcardChooser([(None, wildcard)], False)
+        match = starts_with_regex(r"\[(ASC-SIZE|DSC-SIZE|ASC|DSC|RND)\]", wildcard)
+
+        if match:
+            mode = match[1]
+            items = split_string_with_sep(wildcard[len(match[0]):])
+
+            if mode == 'RND':
+                random.shuffle(items)
+                return mode, WildcardChooser(items, True)
+            else:
+                return mode, WildcardChooser(items, False)
+
+        else:
+            return None, WildcardChooser([(None, wildcard)], False)
 
 
 def wildcard_load():
