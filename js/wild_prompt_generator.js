@@ -38,10 +38,9 @@ app.registerExtension({
     },
     async refreshComboInNodes(defs) {
         console.log("Wild prompt generator refreshComboInNodes");
-        api.fetchApi("/wilddivide/refresh").then(() => {
-            refresh_wildcards();
-        });
-    }
+        await api.fetchApi("/wilddivide/refresh");
+        await refresh_wildcards();
+    },
 });
 
 // Called when the refresh button is clicked.
@@ -666,7 +665,11 @@ function setup_dialog(dialogType) {
             alert_message(dialog, "Key already exists");
         } else {
             await save_slot(key, values);
+            app.graph.setDirtyCanvas(true);
             dialog.close();
+            setTimeout(() => {
+                update_last_generated(generator_node);
+            }, 10);
         }
     });
     return dialog;
