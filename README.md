@@ -173,3 +173,109 @@ scene:
 In this example, selecting the second option would result in an image with dimensions of 832x1216 pixels.
 
 To implement this functionality, ensure that you connect the width and height outputs to the empty latent image node in your workflow. This connection enables the dynamic resizing of the output based on the specified dimensions.
+
+## Wild Prompt Generator Node
+
+This node helps create prompts for the Wildcard Divide node.
+
+![screenshot_generator](docs/screenshot_generator.png)
+
+### Usage
+
+#### Adding a New Slot
+
+Click the **Add Slot** button to open a dialog where you can add a new slot to the wildcards file.
+
+![screenshot_add_slot](docs/screenshot_add_slot.png)
+
+After clicking **Save**, the wildcards will be stored in
+ `custom_nodes/WildDivide/wildcards/m.yaml`.
+For image generation, be sure to add a `template` slot. Use the format `__m/slot_name__` to
+ reference other slots within the template.
+
+![screenshot_add_template](docs/screenshot_add_template.png)
+
+#### Configuring Slot Values
+
+Select slot values from the dropdown menu:
+
+![screenshot_slot_values](docs/screenshot_slot_values.png)
+
+- _disabled_: Replaces the slot with an empty string.
+- _random_: Randomly selects a value from the available options.
+- _specific value_: Replaces `__m/slot__` with your selected value.
+
+#### Retrieving Previous Random Values
+
+The **Get last random values** button retrieves the most recently generated random
+ selections, making it easier to fine-tune your prompt.
+
+#### Creating Groups
+
+Click the **Add group** button to create a new group of related slots.
+
+![screenshot_add_group](docs/screenshot_add_group.png)
+
+Use the format `__m/group/slot__` to reference slots within the group.
+Make sure to update the `template` slot to include these group references.
+
+![screenshot_edit_template](docs/screenshot_edit_template.png)
+
+#### Reordering Slots
+
+Rearrange slots easily using drag-and-drop functionality.
+
+#### Viewing Random Selections
+
+Check the box to display tooltips showing the last generated random values for each slot.
+
+![screenshot_show_random](docs/screenshot_show_random.png)
+
+#### Adding Conditions to Slot Values
+
+You can apply conditions to slot values, which are evaluated against the prompt generated up to that point. For example:
+
+![screenshot_condition](docs/screenshot_condition.png)
+
+In this example, `brown eyes` is added to the candidate pool only if `black hair` is part of the prompt.
+
+Special characters define conditions:
+
+- `~`: Negates a pattern match.
+- `&`: Logical AND.
+- `|`: Logical OR.
+
+For instance, `~(black hair|brown hair)` means the condition is true if neither `black hair` nor `brown hair` matches.
+
+There are two candidate pools: **normal** and **exclusive**. You can control which pool a
+ value is added to by ending the pattern with `?` or `=`:
+
+| Pattern ends with | If Pattern Matches | If Pattern Does Not Match |
+| --- | --- | --- |
+| = | Added to the exclusive pool | Not added to any pool |
+| ? | Added to the exclusive pool | Added to the normal pool |
+| none | Added to the normal pool | Not added to any pool |
+
+When selecting a value, the system prioritizes the exclusive pool if it’s not empty. Otherwise, it selects from the normal pool.
+
+Examples:
+
+![screenshot_normal_pool](docs/screenshot_normal_pool.png)
+
+| Pattern | If Pattern Matches | If Pattern Does Not Match |
+| --- | --- | --- |
+| pants  | `stockings`, `thigh highs`, `socks` | `stockings`, `thigh highs` |
+| pants= | `socks` | `stockings`, `thigh highs` |
+| pants? | `socks` | `stockings`, `thigh highs`, `socks` |
+
+In this case, if pants matches the prompt, the value is selected from the normal pool
+(`stockings`, `thigh highs`, and `socks`). If not, `socks` is excluded, leaving only
+`stockings` and `thigh highs` as options.
+
+If the pattern is `pants=` and it matches, the value is chosen exclusively from the pool
+(`socks`). If it doesn’t match, `socks` is excluded entirely, leaving only `stockings`
+and `thigh highs`.
+
+If the pattern is `pants?` and it matches, the value is chosen from the exclusive pool
+(`socks`). If it doesn’t match, the value is selected from the normal pool
+(`stockings`, `thigh highs`, and `socks`).

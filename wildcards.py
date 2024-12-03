@@ -468,6 +468,10 @@ def save_wildcard_dict(wildcard_dict):
                 m_wildcard_dict_new[keys[0]][keys[1]][keys[2]] = v
         else:
             m_wildcard_dict_new[k] = v
+
+    dir_path = os.path.dirname(WILDCARD_DICT_FILE)
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
     with open(WILDCARD_DICT_FILE, "w") as f:
         yaml.dump(m_wildcard_dict_new, f, encoding="utf-8", allow_unicode=True, sort_keys=False)
 
