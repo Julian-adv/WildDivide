@@ -30,10 +30,9 @@ hair:
   - {4::blonde|5::black|1::red}
 ```
 
-### Pattern-based Selection
+### Pattern-Based Selection
 
-Lines that start with `/` are pattern matchers. These are selected when the pattern matches
-the previously generated prompt. Here's an example:
+Entries beginning with `/` are evaluated against the preceding prompt context. The system selects candidates based on pattern matches. Here's an example:
 
 ```yaml
 outfit:
@@ -46,22 +45,15 @@ legs:
   - bare feet
 ```
 
-Here's how the pattern matching works:
+### Selection Logic
 
-1. When `__outfit__` expands to `blouse, skirt` (1/3 probability):
-   - `__legs__` will only consider options matching `/skirt/` plus unmatched options
-   - Therefore, it will randomly choose between `stockings` or `bare feet`
+When `__outfit__` expands (with equal 1/3 probability for each option):
 
-2. When `__outfit__` expands to `shirt, pants` (1/3 probability):
-   - `__legs__` will only consider options matching `/pants/` plus unmatched options
-   - Therefore, it will randomly choose between `socks` or `bare feet`
+- If it resolves to `blouse, skirt`, then `__legs__` will select from either `stockings` or `bare feet`, as the `/skirt/` pattern matches the context.
+- If it resolves to `shirt, pants`, then `__legs__` will select from either `socks` or `bare feet`, as the `/pants/` pattern matches the context.
+- Entries without patterns (like `bare feet`) are always included in the candidate pool.
 
-3. When `__outfit__` expands to `swimsuit` (1/3 probability):
-   - Since no patterns match, only unmatched options are considered
-   - Therefore, it will select `bare feet`
-
-Note: Options without any pattern matcher (like `bare feet` in this example) are always included
-as candidates, regardless of the previous prompt.
+This allows for contextually appropriate selections based on previously expanded wildcards.
 
 #### Pattern Alternatives
 

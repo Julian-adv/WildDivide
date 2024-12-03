@@ -6,6 +6,7 @@ import folder_paths
 import yaml
 import numpy as np
 import threading
+from .pattern_parser import parse_pattern, evaluate_pattern
 
 
 wildcards_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "wildcards"))
@@ -297,6 +298,28 @@ def process(text, seed=None, kwargs=None):
                                 exclusive_candidates.append(not_match)
                             else:
                                 candidates.append(not_match)
+            elif "=>" in item:
+                pattern, replacement = item.split("=>", 1)
+                pattern = pattern.strip()
+                if len(pattern) > 0:
+                    exclusive = False
+                    exclusive_else = False
+                    if pattern.endswith('='):
+                        pattern = pattern[:-1]
+                        exclusive = True
+                    if pattern.endswith('?'):
+                        pattern = pattern[:-1]
+                        exclusive_else = True
+                    replacement = replacement.strip()
+                    pattern_tree = parse_pattern(pattern)
+                    if evaluate_pattern(pattern_tree, prefix):
+                        if exclusive or exclusive_else:
+                            exclusive_candidates.append(replacement)
+                        else:
+                            candidates.append(replacement)
+                    else:
+                        if exclusive_else:
+                            candidates.append(replacement)
             else:
                 candidates.append(item)
         if len(exclusive_candidates) > 0:
@@ -310,7 +333,7 @@ def process(text, seed=None, kwargs=None):
 
     def replace_wildcard(string):
         pattern = r"__([\w.\-+/*\\]+?)__"
-        matches = re.findall(pattern, string)
+        match = re.search(pattern, string)
 
         replacements_found = False
 
@@ -777,4 +800,3 @@ def wildcard_load():
             print(f"[WildDivide] Failed to load custom wildcards directory. {e}")
 
         print(f"[WildDivide] Wildcards loading done.")
-

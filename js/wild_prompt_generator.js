@@ -49,6 +49,10 @@ export async function refresh_wildcards() {
     if (generator_node) {
         setup_node(generator_node);
         console.log("Wild prompt generator refreshed");
+        app.graph.setDirtyCanvas(true);
+        setTimeout(() => {
+            update_last_generated(generator_node);
+        }, 10);
     }
 }
 
@@ -116,7 +120,7 @@ function calc_tooltip_position(el, tooltip) {
 
 let fromKey = null;
 let group_name = null;
-let tooltips_shown = false;
+let tooltips_shown = true;
 let show_tooltips_checkbox = null;
 let current_context_menu = null;
 
@@ -551,10 +555,10 @@ function create_tooltip(widget) {
         position: absolute;
         background-color: var(--p-surface-800);
         max-width: ${widget.select_elem.offsetWidth}px;
-        min-width: 50px;
+        min-width: 40px;
         height: 22px;
         box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-        z-index: 100;
+        z-index: 90;
         padding: 2px 5px;
         top: 0;
         left: 0;
@@ -564,6 +568,12 @@ function create_tooltip(widget) {
         color: var(--p-surface-100);
         text-align: right;
     `;
+
+    // Hide tooltip when clicked
+    tooltip.onclick = (e) => {
+        e.stopPropagation();
+        tooltip.style.display = "none";
+    };
     const text = document.createElement("span");
     text.style.cssText = `
         text-overflow: ellipsis;
@@ -659,7 +669,7 @@ function setup_dialog(dialogType) {
         let values = "- " + dialog.valueElements.map((element, index) => {
             const condition = dialog.conditionElements[index].value || "";
             const value = element.value || "";
-            return condition ? `<${condition}> ${value}` : value;
+            return condition ? `${condition} => ${value}` : value;
         }).join("\n- ");
         const key = key_from_dialog(dialog);
         // check if key exists
@@ -669,7 +679,6 @@ function setup_dialog(dialogType) {
             alert_message(dialog, "Key already exists");
         } else {
             await save_slot(key, values);
-            app.graph.setDirtyCanvas(true);
             dialog.close();
             setTimeout(() => {
                 update_last_generated(generator_node);
@@ -1032,16 +1041,12 @@ function add_new_value(dialog, label, condition, value, marker) {
     dialog.valueElements.push(valueElement);
     dialog.conditionElements.push(condition_element);
 
-    const adjustHeight = function () {
-        valueElement.style.height = "auto";
-        if (valueElement.value.includes("\n") || valueElement.value.length > 39) {
-            valueElement.style.height = valueElement.scrollHeight + "px";
-        } else {
-            valueElement.style.height = "3ex";
-        }
-    };
-    valueElement.addEventListener("input", adjustHeight);
-    setTimeout(adjustHeight, 0);
+    condition_element.addEventListener("input", () => { adjust_textarea_height(condition_element); });
+    valueElement.addEventListener("input", () => { adjust_textarea_height(valueElement); });
+    setTimeout(() => {
+        adjust_textarea_height(valueElement);
+        adjust_textarea_height(condition_element);
+    }, 0);
 
     const deleteButton = document.createElement("button");
     Object.assign(deleteButton.style, {
@@ -1065,6 +1070,37 @@ function add_new_value(dialog, label, condition, value, marker) {
     }
     marker.before(labelElement, condition_element, valueElement, deleteButton);
     return valueElement;
+}
+
+function adjust_textarea_height(textarea) {
+    textarea.style.height = "auto";
+    
+    // Create temporary span to calculate text width
+    const span = document.createElement('span');
+    span.style.cssText = `
+        position: absolute; 
+        visibility: hidden;
+        white-space: pre;
+        font-family: ${getComputedStyle(textarea).fontFamily};
+        font-size: ${getComputedStyle(textarea).fontSize};
+        padding: ${getComputedStyle(textarea).padding};
+    `;
+    span.textContent = textarea.value;
+    document.body.appendChild(span);
+    
+    const textWidth = span.offsetWidth;
+    document.body.removeChild(span);
+    
+    // Actual textarea width (excluding padding)
+    const textareaWidth = textarea.clientWidth - 
+        (parseInt(getComputedStyle(textarea).paddingLeft) + 
+         parseInt(getComputedStyle(textarea).paddingRight));
+    
+    if (textarea.value.includes("\n") || textWidth > textareaWidth) {
+        textarea.style.height = textarea.scrollHeight + "px";
+    } else {
+        textarea.style.height = "3ex";
+    }
 }
 
 function create_draggable_container(widgetName) {
@@ -1142,7 +1178,7 @@ function get_values_string(key) {
 function get_values_array(group, key) {
     const values = wildcards_dict['m/' + join_group_key(group, key)];
     return values.map(str => {
-        const match = str.match(/^<(.*?)>\s*(.*)$/);
+        const match = str.match(/^(.*?)\s*=>\s*(.*)$/);
         return match ? [match[1], match[2]] : ["", str];
     });
 }
