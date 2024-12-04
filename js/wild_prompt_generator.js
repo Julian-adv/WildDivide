@@ -268,12 +268,16 @@ function add_combo_widget(node, widgetName, value, values) {
 
     select_elem.addEventListener('click', (e) => {
         e.stopPropagation();
-        close_context_menu();
-        contextMenu.style.display = "block";
-        current_context_menu = contextMenu;
-        const [x, y] = calculate_context_menu_position(e.clientX, e.clientY, select_elem, contextMenu);
-        contextMenu.style.left = `${x}px`;
-        contextMenu.style.top = `${y}px`;
+        if (current_context_menu == contextMenu) {
+            close_context_menu();
+        } else {
+            close_context_menu();
+            contextMenu.style.display = "block";
+            current_context_menu = contextMenu;
+            const [x, y] = calculate_context_menu_position(e.clientX, e.clientY, select_elem, contextMenu);
+            contextMenu.style.left = `${x}px`;
+            contextMenu.style.top = `${y}px`;
+        }
     });
     document.addEventListener('click', () => {
         close_context_menu();
