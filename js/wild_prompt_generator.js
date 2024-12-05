@@ -27,6 +27,7 @@ app.registerExtension({
     nodeCreated(node, app) {
         if (node.comfyClass == "WildPromptGenerator") {
             generator_node = node;
+            node.start_index = 0;
             setup_node(node);
             api.addEventListener("status", (e) => {
                 // Update when image is generated
@@ -34,6 +35,32 @@ app.registerExtension({
                     update_last_generated(node);
                 }
             })
+            const graph_canvas_container = document.querySelector("body > div.graph-canvas-container")
+            graph_canvas_container.addEventListener("wheel", (e) => {
+                e.stopPropagation();
+                if (e.deltaY > 0) {
+                    node.start_index += 1;
+                } else {
+                    if (node.start_index > 0) {
+                        node.start_index -= 1;
+                    }
+                }
+                setup_node(node);
+                app.graph.setDirtyCanvas(true);
+            })
+
+            const onDrawForeground = node.onDrawForeground;
+            node.onDrawForeground = (ctx) => {
+                onDrawForeground?.apply(this, arguments);
+                ctx.save();
+                ctx.fillStyle = 'var(--bg-color)';
+                ctx.beginPath();
+                const y = node.widgets[2].last_y + 12;
+                const height = node.buttons_widget.last_y + 8 - y;
+                ctx.rect(node.width - 15, y, 10, height);
+                ctx.fill();
+                ctx.restore();
+            };
         }
     },
     async refreshComboInNodes(defs) {
@@ -63,9 +90,9 @@ function setValueColor(el, value) {
     if (value == 'disabled') {
         el.style.color = "var(--p-form-field-disabled-color)";
     } else if (value == 'random') {
-        el.style.color = "var(--p-blue-400)";
+        el.style.color = "var(--p-primary-color)";
     } else {
-        el.style.color = "var(--p-surface-0)";
+        el.style.color = "var(--fg-color)";
     }
 }
 
@@ -156,16 +183,30 @@ function setup_node(node) {
     let [width, height] = node.size;
     group_name = null;
     
+    let y = 0;
+    let i = 0;
+    const max_height = document.documentElement.clientHeight - 250;
+    let visible = true;
     for (const key of filtered_keys) {
+        if (i++ < node.start_index) {
+            continue;
+        }
+
         const slotName = key.substring(2); // Remove "m/" prefix
-        const values = ["disabled", "random", ...wildcards_dict[key]];
+        const mapped_values = wildcards_dict[key].map((value) => value.includes("=>") ? value.split("=>")[1] : value);
+        const values = ["disabled", "random", ...mapped_values];
         const value = find_similar_value(old_values, values, slotName);
         if (slotName.includes("/")) {
-            check_group_name(node, slotName, value, values);
+            y += check_group_name(node, slotName, value, values);
         } else {
-            add_combo_widget(node, slotName, value, values);
+            y += add_combo_widget(node, slotName, value, values);
+        }
+        if (y > max_height) {
+            visible = false;
+            break;
         }
     }
+    node.last_visible_index = node.widgets.length - 1;
 
     add_buttons_widget(node);
     node.size[0] = width;
@@ -191,11 +232,13 @@ function find_similar_value(old_values, current_values, slotName) {
 
 function check_group_name(node, widgetName, value, values) {
     const [new_group_name, widget_name] = widgetName.split("/");
+    let y = 0;
     if (new_group_name != group_name) {
         group_name = new_group_name;
-        add_group_widget(node, group_name);
+        y += add_group_widget(node, group_name);
     }
-    add_combo_widget(node, widgetName, value, values);
+    y += add_combo_widget(node, widgetName, value, values);
+    return y;
 }
 
 function add_combo_widget(node, widgetName, value, values) {
@@ -215,7 +258,7 @@ function add_combo_widget(node, widgetName, value, values) {
         padding: "0px 8px",
         flex: "1 1 auto",
         width: "150px",
-        backgroundColor: "var(--p-surface-800)",
+        backgroundColor: "var(--bg-color)",
     });
 
     // Create label
@@ -239,13 +282,13 @@ function add_combo_widget(node, widgetName, value, values) {
         margin: "0px",
         border: "none",
         outline: "none",
-        backgroundColor: "var(--p-surface-800)",
+        backgroundColor: "var(--bg-color)",
         textAlignLast: "right",
         cursor: "pointer",
         overflow: "clip",
         textWrap: "nowrap",
         textOverflow: "ellipsis",
-        color: "var(--p-surface-0)",
+        color: "var(--fg-color)",
         flex: "1 1 0"
     });
     setValueColor(select_elem, value);
@@ -257,7 +300,7 @@ function add_combo_widget(node, widgetName, value, values) {
     Object.assign(contextMenu.style, {
         display: "none",
         position: "fixed",
-        backgroundColor: "var(--p-form-field-background)",
+        backgroundColor: "var(--comfy-menu-bg)",
         minWidth: "100px",
         maxHeight: "70vh",
         overflowY: "auto",
@@ -292,7 +335,7 @@ function add_combo_widget(node, widgetName, value, values) {
             backgroundColor: "var(--comfy-menu-bg)",
             display: "block",
             padding: "2px",
-            color: "var(--p-surface-0)",
+            color: "var(--fg-color)",
             textDecoration: "none",
             fontSize: "12px",
         });
@@ -312,7 +355,7 @@ function add_combo_widget(node, widgetName, value, values) {
     }
     document.body.appendChild(contextMenu);
 
-    // Create settings button for the combo
+    // Create edit button for the combo
     const button = document.createElement("button")
     Object.assign(button.style, {
         backgroundColor: "transparent",
@@ -356,6 +399,7 @@ function add_combo_widget(node, widgetName, value, values) {
             widget.tooltip.remove();
         }
     };
+    return 24;
 }
 
 function add_group_widget(node, widgetName) {
@@ -410,6 +454,7 @@ function add_group_widget(node, widgetName) {
         container.remove();
     };
     group_name = widgetName;
+    return 24;
 }
 
 function add_buttons_widget(node) {
@@ -510,6 +555,7 @@ function add_buttons_widget(node) {
     widget.onRemove = () => {
         container.remove();
     };
+    node.buttons_widget = widget;
 }
 
 // Show last generated
@@ -1117,6 +1163,7 @@ function create_draggable_container(widgetName) {
         border: "none",
         cursor: "move",
         userSelect: "none",
+        paddingRight: "10px",
     });
     container.draggable = true;
     container.addEventListener("dragstart", (e) => {

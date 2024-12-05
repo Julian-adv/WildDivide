@@ -6,7 +6,7 @@ class WildPromptGenerator:
     @classmethod
     def INPUT_TYPES(cls):
         return {
-            "required": cls.get_menu_list()
+            "optional": cls.get_menu_list()
         }
 
     @staticmethod
@@ -18,7 +18,8 @@ class WildPromptGenerator:
                 menu.append(k)
         menu_list = { "seed": ("INT", {"default": 0, "min": 0, "max": 0xFFFFFFFFFFFFFFFF})}
         for key in menu:
-            menu_list[key[2:]] = (["disabled", "random"] + dict[key], )
+            values = [x.split("=>")[1] if "=>" in x else x for x in dict[key]]
+            menu_list[key[2:]] = (["disabled", "random"] + values, )
         return menu_list
 
     CATEGORY = "WildDivide"
