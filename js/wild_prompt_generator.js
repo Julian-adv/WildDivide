@@ -46,20 +46,14 @@ app.registerExtension({
                     }
                 }
                 setup_node(node);
-                app.graph.setDirtyCanvas(true);
+                app.graph.setDirtyCanvas(true, true);
+                update_last_generated(node);
             })
 
             const onDrawForeground = node.onDrawForeground;
             node.onDrawForeground = (ctx) => {
                 onDrawForeground?.apply(this, arguments);
-                ctx.save();
-                ctx.fillStyle = 'var(--bg-color)';
-                ctx.beginPath();
-                const y = node.widgets[2].last_y + 12;
-                const height = node.buttons_widget.last_y + 8 - y;
-                ctx.rect(node.width - 15, y, 10, height);
-                ctx.fill();
-                ctx.restore();
+                draw_scrollbar(ctx, node);
             };
         }
     },
@@ -69,6 +63,38 @@ app.registerExtension({
         await refresh_wildcards();
     },
 });
+
+// Draw scrollbar
+function draw_scrollbar(ctx, node) {
+    const theme = app.ui.settings.settingsValues['Comfy.ColorPalette'];
+    // Set scrollbar color
+    let scrollbar_bg = '#202020';
+    let scrollbar_knob = '#505050';
+    if (theme == 'light') {
+        scrollbar_bg = '#dddddd';
+        scrollbar_knob = '#bbbbbb';
+    }
+
+    ctx.save();
+
+    // draw scrollbar
+    ctx.fillStyle = scrollbar_bg;
+    ctx.beginPath();
+    const y = node.widgets[2].last_y + 12;
+    const height = node.buttons_widget.last_y + 8 - y;
+    ctx.rect(node.width - 15, y, 10, height);
+    ctx.fill();
+
+    // draw scroll knob
+    // h : height = visible_height : total_height
+    ctx.fillStyle = scrollbar_knob;
+    ctx.beginPath();
+    ctx.rect(node.width - 15, y + (node.start_y * height / node.total_height), 10,
+        node.visible_height * height  / node.total_height);
+    ctx.fill();
+
+    ctx.restore();
+}
 
 // Called when the refresh button is clicked.
 export async function refresh_wildcards() {
@@ -184,32 +210,43 @@ function setup_node(node) {
     group_name = null;
     
     let y = 0;
+    let start_y = 0;
+    let end_y = 0;
     let i = 0;
     const max_height = document.documentElement.clientHeight - 250;
-    let visible = true;
+    let state = "before"
     for (const key of filtered_keys) {
-        if (i++ < node.start_index) {
-            continue;
-        }
-
         const slotName = key.substring(2); // Remove "m/" prefix
+        const group_node = slotName.includes("/");
+        if (state === "before") {
+            if (i++ === node.start_index) {
+                start_y = y;
+                state = "show";
+            }
+        } else if (state === "show") {
+            if (y - start_y > max_height) {
+                end_y = y;
+                state = "after";
+            }
+        }
         const mapped_values = wildcards_dict[key].map((value) => value.includes("=>") ? value.split("=>")[1] : value);
         const values = ["disabled", "random", ...mapped_values];
         const value = find_similar_value(old_values, values, slotName);
-        if (slotName.includes("/")) {
-            y += check_group_name(node, slotName, value, values);
+        if (group_node) {
+            y += check_group_name(node, slotName, value, values, state === "show");
         } else {
-            y += add_combo_widget(node, slotName, value, values);
-        }
-        if (y > max_height) {
-            visible = false;
-            break;
+            y += add_combo_widget(node, slotName, value, values, state === "show");
         }
     }
-    node.last_visible_index = node.widgets.length - 1;
+    if (state === "show") {
+        end_y = y;
+    }
 
     add_buttons_widget(node);
     node.size[0] = width;
+    node.total_height = y;
+    node.visible_height = end_y - start_y;
+    node.start_y = start_y;
 }
 
 function find_similar_value(old_values, current_values, slotName) {
@@ -230,18 +267,20 @@ function find_similar_value(old_values, current_values, slotName) {
     }
 }
 
-function check_group_name(node, widgetName, value, values) {
+function check_group_name(node, widgetName, value, values, visible) {
     const [new_group_name, widget_name] = widgetName.split("/");
     let y = 0;
     if (new_group_name != group_name) {
         group_name = new_group_name;
-        y += add_group_widget(node, group_name);
+        y += add_group_widget(node, group_name, visible);
     }
-    y += add_combo_widget(node, widgetName, value, values);
+    y += add_combo_widget(node, widgetName, value, values, visible);
     return y;
 }
 
-function add_combo_widget(node, widgetName, value, values) {
+const widget_height = 20;
+
+function add_combo_widget(node, widgetName, value, values, visible) {
     const container = create_draggable_container(widgetName);
 
     // Create combo
@@ -373,24 +412,41 @@ function add_combo_widget(node, widgetName, value, values) {
     container.append(button);
 
     // Create widget
-    const widget = node.addDOMWidget(widgetName, 'mycombo', container, {
-        getValue() {
-            return select_elem.textContent;
-        },
-        setValue(v) {
-            setValueColor(select_elem, v);
-        },
-        getHeight() {
-            return 24;
-        },
-        onDraw(w) {
-            // These are needed to be here
-            Object.assign(w.element.style, {
-                display: "flex",
-                height: "22px",
-            });
-        }
-    });
+    let widget = null;
+    if (visible) {
+        widget = node.addDOMWidget(widgetName, 'mycombo', container, {
+            getValue() {
+                return select_elem.textContent;
+            },
+            setValue(v) {
+                setValueColor(select_elem, v);
+            },
+            onDraw(w) {
+                Object.assign(w.element.style, {
+                    display: "flex",
+                    height: "22px",
+                });
+            }
+        });
+        widget.computeSize = () => [0, widget_height];
+    } else {
+        widget = node.addDOMWidget(widgetName, 'hidden', container, {
+            getValue() {
+                return select_elem.textContent;
+            },
+            setValue(v) {
+                setValueColor(select_elem, v);
+            },
+            onDraw(w) {
+                Object.assign(w.element.style, {
+                    display: "flex",
+                    height: "0px",
+                });
+            }
+        });
+        widget.type = "hidden"
+        widget.computeSize = () => [0, -4];
+    }
     widget.container = container;
     widget.select_elem = select_elem;
     widget.onRemove = () => {
@@ -399,10 +455,10 @@ function add_combo_widget(node, widgetName, value, values) {
             widget.tooltip.remove();
         }
     };
-    return 24;
+    return widget_height + 4;
 }
 
-function add_group_widget(node, widgetName) {
+function add_group_widget(node, widgetName, visible) {
     // Container
     const container = create_draggable_container(widgetName);
 
@@ -433,28 +489,45 @@ function add_group_widget(node, widgetName) {
     };
     container.append(label, button);
 
-    const widget = node.addDOMWidget(widgetName, 'mygroup', container, {
-        getValue() {
-            return 'disabled';
-        },
-        setValue(v) {
-        },
-        getHeight() {
-            return 24;
-        },
-        onDraw(w) {
-            Object.assign(w.element.style, {
-                display: "flex",
-                height: "22px",
-            });
-        }
-    });
+    let widget = null;
+    if (visible) {
+        widget = node.addDOMWidget(widgetName, 'mygroup', container, {
+            getValue() {
+                return 'disabled';
+            },
+            setValue(v) {
+            },
+            onDraw(w) {
+                Object.assign(w.element.style, {
+                    display: "flex",
+                    height: "22px",
+                });
+            }
+        });
+        widget.computeSize = () => [0, widget_height];
+    } else {
+        widget = node.addDOMWidget(widgetName, 'hidden', container, {
+            getValue() {
+                return 'disabled';
+            },
+            setValue(v) {
+            },
+            onDraw(w) {
+                Object.assign(w.element.style, {
+                    display: "flex",
+                    height: "0px",
+                });
+            }
+        });
+        widget.type = "hidden"
+        widget.computeSize = () => [0, -4];
+    }
     widget.container = container;
     widget.onRemove = () => {
         container.remove();
     };
     group_name = widgetName;
-    return 24;
+    return widget_height + 4;
 }
 
 function add_buttons_widget(node) {
