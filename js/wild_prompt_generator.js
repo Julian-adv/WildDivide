@@ -45,7 +45,7 @@ app.registerExtension({
                         node.start_index -= 1;
                     }
                 }
-                setup_node(node);
+                setup_node_hidden(node);
                 app.graph.setDirtyCanvas(true, true);
                 update_last_generated(node);
             })
@@ -249,6 +249,44 @@ function setup_node(node) {
     node.start_y = start_y;
 }
 
+const widget_height = 20;
+
+// Set up widget's hidden state
+function setup_node_hidden(node) {
+    let y = 0;
+    let start_y = 0;
+    let end_y = 0;
+    const max_height = document.documentElement.clientHeight - 250;
+    let state = "before"
+    for (let i = 0; i < node.widgets.length - 3; i++) {
+        const widget = node.widgets[i + 2];
+        if (state === "before") {
+            if (i === node.start_index) {
+                start_y = y;
+                state = "show";
+            }
+        } else if (state === "show") {
+            if (y - start_y > max_height) {
+                end_y = y;
+                state = "after";
+            }
+        }
+        if (state === "show") {
+            widget.type = widget.name.includes("/") ? "mygroup" : "mycombo";
+        } else {
+            widget.type = "hidden";
+        }
+        y += widget_height + 4;
+    }
+    if (state === "show") {
+        end_y = y;
+    }
+
+    node.total_height = y;
+    node.visible_height = end_y - start_y;
+    node.start_y = start_y;
+}
+
 function find_similar_value(old_values, current_values, slotName) {
     let value = old_values[slotName];
     if (value == null || value == undefined) {
@@ -277,8 +315,6 @@ function check_group_name(node, widgetName, value, values, visible) {
     y += add_combo_widget(node, widgetName, value, values, visible);
     return y;
 }
-
-const widget_height = 20;
 
 function add_combo_widget(node, widgetName, value, values, visible) {
     const container = create_draggable_container(widgetName);
@@ -412,41 +448,21 @@ function add_combo_widget(node, widgetName, value, values, visible) {
     container.append(button);
 
     // Create widget
-    let widget = null;
-    if (visible) {
-        widget = node.addDOMWidget(widgetName, 'mycombo', container, {
-            getValue() {
-                return select_elem.textContent;
-            },
-            setValue(v) {
-                setValueColor(select_elem, v);
-            },
-            onDraw(w) {
-                Object.assign(w.element.style, {
-                    display: "flex",
-                    height: "22px",
-                });
-            }
-        });
-        widget.computeSize = () => [0, widget_height];
-    } else {
-        widget = node.addDOMWidget(widgetName, 'hidden', container, {
-            getValue() {
-                return select_elem.textContent;
-            },
-            setValue(v) {
-                setValueColor(select_elem, v);
-            },
-            onDraw(w) {
-                Object.assign(w.element.style, {
-                    display: "flex",
-                    height: "0px",
-                });
-            }
-        });
-        widget.type = "hidden"
-        widget.computeSize = () => [0, -4];
-    }
+    const widget = node.addDOMWidget(widgetName, visible ? 'mycombo' : 'hidden', container, {
+        getValue() {
+            return select_elem.textContent;
+        },
+        setValue(v) {
+            setValueColor(select_elem, v);
+        },
+        onDraw(w) {
+            Object.assign(w.element.style, {
+                display: "flex",
+                height: w.type === "hidden" ? "0px" : "22px",
+            });
+        }
+    });
+    widget.computeSize = () => [0, widget.type === "hidden" ? -4 : widget_height];
     widget.container = container;
     widget.select_elem = select_elem;
     widget.onRemove = () => {
@@ -489,39 +505,20 @@ function add_group_widget(node, widgetName, visible) {
     };
     container.append(label, button);
 
-    let widget = null;
-    if (visible) {
-        widget = node.addDOMWidget(widgetName, 'mygroup', container, {
-            getValue() {
-                return 'disabled';
-            },
-            setValue(v) {
-            },
-            onDraw(w) {
-                Object.assign(w.element.style, {
-                    display: "flex",
-                    height: "22px",
-                });
-            }
-        });
-        widget.computeSize = () => [0, widget_height];
-    } else {
-        widget = node.addDOMWidget(widgetName, 'hidden', container, {
-            getValue() {
-                return 'disabled';
-            },
-            setValue(v) {
-            },
-            onDraw(w) {
-                Object.assign(w.element.style, {
-                    display: "flex",
-                    height: "0px",
-                });
-            }
-        });
-        widget.type = "hidden"
-        widget.computeSize = () => [0, -4];
-    }
+    const widget = node.addDOMWidget(widgetName, visible ? 'mygroup' : 'hidden', container, {
+        getValue() {
+            return 'disabled';
+        },
+        setValue(v) {
+        },
+        onDraw(w) {
+            Object.assign(w.element.style, {
+                display: "flex",
+                height: w.type === "hidden" ? "0px" : "22px",
+            });
+        }
+    });
+    widget.computeSize = () => [0, widget.type === "hidden" ? -4 : widget_height];
     widget.container = container;
     widget.onRemove = () => {
         container.remove();
@@ -650,7 +647,6 @@ async function update_last_generated(node) {
     if (!tooltips_shown) {
         return;
     }
-    clear_tooltips(node);
     
     let res = await api.fetchApi("/wilddivide/last_generated");
     let data = await res.json();
@@ -660,12 +656,18 @@ async function update_last_generated(node) {
 
 function create_tooltips(node, last_generated) {
     for (const widget of node.widgets.slice(2)) {
-        if (widget.name in last_generated) {
+        if (widget.type !== "hidden" && widget.name in last_generated) {
             if (!widget.tooltip) {
                 widget.tooltip = create_tooltip(widget);
+            } else {
+                widget.tooltip.style.maxWidth = `${widget.select_elem.offsetWidth}px`;
             }
             widget.tooltip.querySelector('span').textContent = last_generated[widget.name].replace(/\n/g, ' ');
             set_tooltip_position(widget);
+        } else {
+            if (widget.tooltip) {
+                widget.tooltip.style.display = "none";
+            }
         }
     }
 }
