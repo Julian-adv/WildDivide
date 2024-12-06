@@ -15,15 +15,6 @@ let generator_node = null;
 
 app.registerExtension({
     name: "Wild.Prompt.Generator",
-    // async beforeRegisterNodeDef(nodeType, nodeData, app) {
-    //     if (nodeType.comfyClass == "WildPromptGenerator") {
-    //         const onExecuted = nodeType.prototype.onExecuted;
-    //         nodeType.prototype.onExecuted = (args) => {
-    //             update_last_generated(generator_node, args.last_generated);
-    //             return onExecuted?.apply(this, arguments);
-    //         };
-    //     }
-    // },
     nodeCreated(node, app) {
         if (node.comfyClass == "WildPromptGenerator") {
             generator_node = node;
@@ -37,18 +28,8 @@ app.registerExtension({
             })
             const graph_canvas_container = document.querySelector("body > div.graph-canvas-container")
             graph_canvas_container.addEventListener("wheel", (e) => {
-                e.stopPropagation();
-                if (e.deltaY > 0) {
-                    node.start_index += 1;
-                } else {
-                    if (node.start_index > 0) {
-                        node.start_index -= 1;
-                    }
-                }
-                setup_node_hidden(node);
-                app.graph.setDirtyCanvas(true, true);
-                update_last_generated(node);
-            })
+                scroll_widgets(e, node);
+            });
 
             const onDrawForeground = node.onDrawForeground;
             node.onDrawForeground = (ctx) => {
@@ -317,7 +298,7 @@ function check_group_name(node, widgetName, value, values, visible) {
 }
 
 function add_combo_widget(node, widgetName, value, values, visible) {
-    const container = create_draggable_container(widgetName);
+    const container = create_draggable_container(widgetName, node);
 
     // Create combo
     const combo = document.createElement("div");
@@ -382,6 +363,8 @@ function add_combo_widget(node, widgetName, value, values, visible) {
         boxShadow: "0px 8px 16px 0px rgba(0,0,0,0.2)",
         zIndex: "100",
         padding: "2px",
+        borderRadius: "4px",
+        border: "1px solid var(--p-form-field-border-color)",
     });
 
     select_elem.addEventListener('click', (e) => {
@@ -476,7 +459,7 @@ function add_combo_widget(node, widgetName, value, values, visible) {
 
 function add_group_widget(node, widgetName, visible) {
     // Container
-    const container = create_draggable_container(widgetName);
+    const container = create_draggable_container(widgetName, node);
 
     // Label
     const label = document.createElement("label");
@@ -678,7 +661,7 @@ function create_tooltip(widget) {
         display: flex;
         align-items: center;
         position: absolute;
-        background-color: var(--p-surface-800);
+        background-color: var(--bg-color);
         max-width: ${widget.select_elem.offsetWidth}px;
         min-width: 40px;
         height: 22px;
@@ -690,7 +673,7 @@ function create_tooltip(widget) {
         font-size: 12px;
         border: 1px solid var(--p-surface-500);
         border-radius: 4px;
-        color: var(--p-surface-100);
+        color: var(--fg-color);
         text-align: right;
     `;
 
@@ -704,8 +687,12 @@ function create_tooltip(widget) {
         text-overflow: ellipsis;
         overflow: hidden;
         white-space: nowrap;
+        cursor: pointer;
     `;
     tooltip.append(text);
+    tooltip.addEventListener("wheel", (e) => {
+        scroll_widgets(e, generator_node)
+    })
     document.body.append(tooltip);
     return tooltip;
 }
@@ -1228,7 +1215,7 @@ function adjust_textarea_height(textarea) {
     }
 }
 
-function create_draggable_container(widgetName) {
+function create_draggable_container(widgetName, node) {
     // Create widget container
     const container = document.createElement("div");
     Object.assign(container.style, {
@@ -1271,7 +1258,25 @@ function create_draggable_container(widgetName) {
         fromKey = null;
     });
     container.classList.add('widget-container');
+    container.addEventListener("wheel", (e) => {
+        scroll_widgets(e, node);
+    });
     return container;
+}
+
+function scroll_widgets(e, node) {
+    e.stopPropagation();
+    if (e.deltaY > 0) {
+        node.start_index += 1;
+    } else {
+        if (node.start_index > 0) {
+            node.start_index -= 1;
+        }
+    }
+    close_context_menu();
+    setup_node_hidden(node);
+    app.graph.setDirtyCanvas(true, true);
+    update_last_generated(node);
 }
 
 function remove_last_key(key) {
