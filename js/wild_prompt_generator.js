@@ -189,45 +189,21 @@ function setup_node(node) {
     node.widgets.splice(2);
     let [width, height] = node.size;
     group_name = null;
-    
-    let y = 0;
-    let start_y = 0;
-    let end_y = 0;
-    let i = 0;
-    const max_height = document.documentElement.clientHeight - 250;
-    let state = "before"
     for (const key of filtered_keys) {
         const slotName = key.substring(2); // Remove "m/" prefix
         const group_node = slotName.includes("/");
-        if (state === "before") {
-            if (i++ === node.start_index) {
-                start_y = y;
-                state = "show";
-            }
-        } else if (state === "show") {
-            if (y - start_y > max_height) {
-                end_y = y;
-                state = "after";
-            }
-        }
         const mapped_values = wildcards_dict[key].map((value) => value.includes("=>") ? value.split("=>")[1] : value);
         const values = ["disabled", "random", ...mapped_values];
         const value = find_similar_value(old_values, values, slotName);
         if (group_node) {
-            y += check_group_name(node, slotName, value, values, state === "show");
+            check_group_name(node, slotName, value, values, true);
         } else {
-            y += add_combo_widget(node, slotName, value, values, state === "show");
+            add_combo_widget(node, slotName, value, values, true);
         }
     }
-    if (state === "show") {
-        end_y = y;
-    }
-
     add_buttons_widget(node);
     node.size[0] = width;
-    node.total_height = y;
-    node.visible_height = end_y - start_y;
-    node.start_y = start_y;
+    setup_node_hidden(node);
 }
 
 const widget_height = 20;
@@ -288,13 +264,11 @@ function find_similar_value(old_values, current_values, slotName) {
 
 function check_group_name(node, widgetName, value, values, visible) {
     const [new_group_name, widget_name] = widgetName.split("/");
-    let y = 0;
     if (new_group_name != group_name) {
         group_name = new_group_name;
-        y += add_group_widget(node, group_name, visible);
+        add_group_widget(node, group_name, visible);
     }
-    y += add_combo_widget(node, widgetName, value, values, visible);
-    return y;
+    add_combo_widget(node, widgetName, value, values, visible);
 }
 
 function add_combo_widget(node, widgetName, value, values, visible) {
@@ -454,7 +428,6 @@ function add_combo_widget(node, widgetName, value, values, visible) {
             widget.tooltip.remove();
         }
     };
-    return widget_height + 4;
 }
 
 function add_group_widget(node, widgetName, visible) {
@@ -507,7 +480,6 @@ function add_group_widget(node, widgetName, visible) {
         container.remove();
     };
     group_name = widgetName;
-    return widget_height + 4;
 }
 
 function add_buttons_widget(node) {
