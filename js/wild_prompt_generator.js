@@ -738,7 +738,7 @@ function show_edit_dialog(widgetName) {
         [groupName, widgetName] = widgetName.split("/");
     }
 
-    show_dialog(editDialog, "Edit Slot", groupName, widgetName);
+    show_dialog(editDialog, `Edit Slot: ${widgetName}`, groupName, widgetName);
 }
 
 function show_group_dialog() {
@@ -973,11 +973,20 @@ function show_dialog(dialog, title, groupName, widgetName) {
     });
     dialog.textElement.append(container);
     if (dialog.type === DialogType.EDIT) {
-        dialog.valueElements[dialog.valueElements.length - 1].focus();
+        setTimeout(() => {
+            dialog.valueElements[dialog.valueElements.length - 1].focus();
+            dialog.valueElements[dialog.valueElements.length - 1].scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 100);
     } else if (dialog.type === DialogType.GROUP) {
-        dialog.groupElement.focus();
+        setTimeout(() => {
+            dialog.groupElement.focus();
+            dialog.groupElement.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 100);
     } else {
-        dialog.slotElement.focus();
+        setTimeout(() => {
+            dialog.slotElement.focus();
+            dialog.slotElement.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 100);
     }
 }
 
