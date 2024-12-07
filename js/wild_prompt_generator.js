@@ -62,7 +62,7 @@ function draw_scrollbar(ctx, node) {
     ctx.fillStyle = scrollbar_bg;
     ctx.beginPath();
     const y = node.widgets[2].last_y + 12;
-    const height = node.buttons_widget.last_y + 8 - y;
+    const height = node.visible_height;
     ctx.rect(node.width - 15, y, 10, height);
     ctx.fill();
 
