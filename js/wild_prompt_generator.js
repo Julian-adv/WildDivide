@@ -618,6 +618,7 @@ function create_tooltips(node, last_generated) {
                 widget.tooltip.style.maxWidth = `${widget.select_elem.offsetWidth}px`;
             }
             widget.tooltip.querySelector('span').textContent = last_generated[widget.name].replace(/\n/g, ' ');
+            set_tooltip_color(widget);
             set_tooltip_position(widget);
         } else {
             if (widget.tooltip) {
@@ -674,6 +675,14 @@ function set_tooltip_position_all(node) {
         if (widget.tooltip && widget.tooltip.style.display !== "none") {
             set_tooltip_position(widget);
         }
+    }
+}
+
+function set_tooltip_color(widget) {
+    if (widget.value === "random") {
+        widget.tooltip.style.color = "var(--p-primary-color)";
+    } else {
+        widget.tooltip.style.color = "var(--fg-color)";
     }
 }
 
