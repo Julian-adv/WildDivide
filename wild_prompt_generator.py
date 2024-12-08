@@ -18,7 +18,7 @@ class WildPromptGenerator:
                 menu.append(k)
         menu_list = { "seed": ("INT", {"default": 0, "min": 0, "max": 0xFFFFFFFFFFFFFFFF})}
         for key in menu:
-            values = [x.split("=>")[1] if "=>" in x else x for x in dict[key]]
+            values = [x.split("=>")[1].strip() if "=>" in x else x for x in dict[key]]
             menu_list[key[2:]] = (["disabled", "random"] + values, )
         return menu_list
 

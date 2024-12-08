@@ -114,9 +114,14 @@ function calculate_context_menu_position(x, y, element, context_menu) {
 
     // Get the position of the text node within the span
     const text_node = Array.from(element.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
-    const range = document.createRange();
-    range.selectNode(text_node);
-    const text_rect = range.getBoundingClientRect();
+    let text_rect;
+    if (text_node) {
+        const range = document.createRange();
+        range.selectNode(text_node);
+        text_rect = range.getBoundingClientRect();
+    } else {
+        text_rect = element.getBoundingClientRect();
+    }
 
     // Align the left of the text with x and place it below
     let nx = text_rect.left;
@@ -192,7 +197,7 @@ function setup_node(node) {
     for (const key of filtered_keys) {
         const slotName = key.substring(2); // Remove "m/" prefix
         const group_node = slotName.includes("/");
-        const mapped_values = wildcards_dict[key].map((value) => value.includes("=>") ? value.split("=>")[1] : value);
+        const mapped_values = wildcards_dict[key].map((value) => value.includes("=>") ? value.split("=>")[1].trim() : value);
         const values = ["disabled", "random", ...mapped_values];
         const value = find_similar_value(old_values, values, slotName);
         if (group_node) {
