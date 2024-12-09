@@ -1,5 +1,7 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
+import { get_tooltips_shown, show_last_generated, update_last_generated,
+         set_tooltip_position_all, clear_tooltips } from "./wild_prompt_tooltip.js";
 
 let wildcards_dict = {};
 
@@ -150,25 +152,10 @@ function calculate_context_menu_position(x, y, element, context_menu) {
     return [nx, ny];
 }
 
-function calc_tooltip_position(el, tooltip) {
-    const rect = el.getBoundingClientRect();
-    const x = rect.right - tooltip.offsetWidth;
-    const y = rect.top;
-    return [x, y];
-}
-
 let fromKey = null;
 let group_name = null;
-let tooltips_shown = true;
 let show_tooltips_checkbox = null;
 let current_context_menu = null;
-
-function set_tooltips_shown(value) {
-    tooltips_shown = value;
-    if (show_tooltips_checkbox) {
-        show_tooltips_checkbox.checked = value;
-    }
-}
 
 function close_context_menu() {
     if (current_context_menu) {
@@ -516,7 +503,7 @@ function add_buttons_widget(node) {
                 // Create checkbox
                 show_tooltips_checkbox = document.createElement("input");
                 show_tooltips_checkbox.type = "checkbox";
-                show_tooltips_checkbox.checked = tooltips_shown;
+                show_tooltips_checkbox.checked = get_tooltips_shown();
                 Object.assign(show_tooltips_checkbox.style, {
                     margin: "0",
                     cursor: "pointer",
@@ -588,116 +575,6 @@ function add_buttons_widget(node) {
     node.buttons_widget = widget;
 }
 
-// Show last generated
-async function show_last_generated(node) {
-    if (tooltips_shown) {
-        clear_tooltips(node);
-        set_tooltips_shown(false);
-        return;
-    }
-
-    set_tooltips_shown(true);
-    let res = await api.fetchApi("/wilddivide/last_generated");
-    let data = await res.json();
-
-    create_tooltips(node, data.data);
-}
-
-async function update_last_generated(node) {
-    if (!tooltips_shown) {
-        return;
-    }
-    
-    let res = await api.fetchApi("/wilddivide/last_generated");
-    let data = await res.json();
-
-    create_tooltips(node, data.data);
-}
-
-function create_tooltips(node, last_generated) {
-    for (const widget of node.widgets.slice(2)) {
-        if (widget.type !== "hidden" && widget.name in last_generated) {
-            if (!widget.tooltip) {
-                widget.tooltip = create_tooltip(widget);
-            } else {
-                widget.tooltip.style.maxWidth = `${widget.select_elem.offsetWidth}px`;
-            }
-            widget.tooltip.querySelector('span').textContent = last_generated[widget.name].replace(/\n/g, ' ');
-            set_tooltip_color(widget);
-            set_tooltip_position(widget);
-        } else {
-            if (widget.tooltip) {
-                widget.tooltip.style.display = "none";
-            }
-        }
-    }
-}
-
-function create_tooltip(widget) {
-    const tooltip = document.createElement("div");
-    tooltip.style.cssText = `
-        display: flex;
-        align-items: center;
-        position: absolute;
-        background-color: var(--bg-color);
-        max-width: ${widget.select_elem.offsetWidth}px;
-        min-width: 40px;
-        height: 22px;
-        box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-        z-index: 90;
-        padding: 2px 5px;
-        top: 0;
-        left: 0;
-        font-size: 12px;
-        border: 1px solid var(--p-surface-500);
-        border-radius: 4px;
-        color: var(--fg-color);
-        text-align: right;
-    `;
-
-    // Hide tooltip when clicked
-    tooltip.onclick = (e) => {
-        e.stopPropagation();
-        tooltip.style.display = "none";
-    };
-    const text = document.createElement("span");
-    text.style.cssText = `
-        text-overflow: ellipsis;
-        overflow: hidden;
-        white-space: nowrap;
-        cursor: pointer;
-    `;
-    tooltip.append(text);
-    tooltip.addEventListener("wheel", (e) => {
-        scroll_widgets(e, generator_node)
-    })
-    document.body.append(tooltip);
-    return tooltip;
-}
-
-function set_tooltip_position_all(node) {
-    for (const widget of node.widgets.slice(2)) {
-        if (widget.tooltip && widget.tooltip.style.display !== "none") {
-            set_tooltip_position(widget);
-        }
-    }
-}
-
-function set_tooltip_color(widget) {
-    if (widget.value === "random") {
-        widget.tooltip.style.color = "var(--p-primary-color)";
-    } else {
-        widget.tooltip.style.color = "var(--fg-color)";
-    }
-}
-
-function set_tooltip_position(widget) {
-    widget.tooltip.style.display = "flex";
-    const [x, y] = calc_tooltip_position(widget.select_elem, widget.tooltip);
-    widget.tooltip.style.left = `${x}px`;
-    widget.tooltip.style.top = `${y-4}px`;
-}
-
 // Sets the last generated values to the widgets.
 async function set_last_generated(node) {
     let res = await api.fetchApi("/wilddivide/last_generated");
@@ -709,14 +586,6 @@ async function set_last_generated(node) {
         }
     }
     clear_tooltips(node);
-}
-
-function clear_tooltips(node) {
-    for (const widget of node.widgets.slice(2)) {
-        if (widget.tooltip) {
-            widget.tooltip.style.display = "none";
-        }
-    }
 }
 
 // Sets all widgets to random.
