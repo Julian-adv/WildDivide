@@ -6,22 +6,18 @@ export function get_tooltips_shown() {
     return tooltips_shown;
 }
 
-function set_tooltips_shown(value) {
+export function set_tooltips_shown(value) {
     tooltips_shown = value;
-    if (show_tooltips_checkbox) {
-        show_tooltips_checkbox.checked = value;
-    }
 }
 
 // Show last generated
-export async function show_last_generated(node) {
-    if (tooltips_shown) {
+export async function show_last_generated(node, shown) {
+    tooltips_shown = shown;
+    if (!tooltips_shown) {
         clear_tooltips(node);
-        set_tooltips_shown(false);
         return;
     }
 
-    set_tooltips_shown(true);
     let res = await api.fetchApi("/wilddivide/last_generated");
     let data = await res.json();
 
