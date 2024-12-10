@@ -38,11 +38,14 @@ export function show_group_dialog() {
 
 function setup_dialog(dialogType) {
     const dialog = setup_common_dialog(dialogType, "Save", async function (dialog) {
+        const wildcards_dict = get_wildcards_dict();
+
         let values = "- " + dialog.valueElements.map((element, index) => {
             const condition = dialog.conditionElements[index].value || "";
             const value = element.value || "";
             return condition ? `${condition} => ${value}` : value;
         }).join("\n- ");
+
         const key = key_from_dialog(dialog);
         // check if key exists
         if (key == "") {
@@ -152,13 +155,17 @@ function setup_common_dialog(dialogType, okLabel, okCallback) {
 function show_dialog(dialog, title, groupName, widgetName) {
     const container = document.createElement("div");
     Object.assign(container.style, {
+        display: "flex",
+        flexDirection: "column",
+        gap: "2px",
+    })
+    const header = document.createElement("div");
+    Object.assign(header.style, {
         display: "grid",
-        gridTemplateColumns: "auto 1fr 2fr auto",
+        gridTemplateColumns: "auto 400px auto",
         alignItems: "baseline",
         gap: "0px 2px",
         marginTop: "10px",
-        maxHeight: "60vh",
-        overflowY: "auto",
         paddingRight: "10px"
     });
 
@@ -171,16 +178,15 @@ function show_dialog(dialog, title, groupName, widgetName) {
 
     dialog.groupElement = document.createElement("input");
     Object.assign(dialog.groupElement.style, {
-        width: "300px",
+        width: "auto",
         margin: "0",
         padding: "3px 5px",
         border: "1px solid var(--p-form-field-border-color)",
-        gridColumn: "2 / span 2"
     });
     dialog.groupElement.value = groupName || "";
     dialog.groupElement.disabled = (dialog.type === DialogType.EDIT);
 
-    container.append(groupLabel, dialog.groupElement, document.createElement("span"));
+    header.append(groupLabel, dialog.groupElement, document.createElement("span"));
 
     // Slot label
     const slotLabel = document.createElement("label");
@@ -191,11 +197,10 @@ function show_dialog(dialog, title, groupName, widgetName) {
 
     dialog.slotElement = document.createElement("input");
     Object.assign(dialog.slotElement.style, {
-        width: "300px",
+        width: "auto",
         margin: "0",
         padding: "3px 5px",
         border: "1px solid var(--p-form-field-border-color)",
-        gridColumn: "2 / span 2"
     });
     dialog.slotElement.disabled = (dialog.type === DialogType.EDIT);
     if (dialog.type === DialogType.EDIT) {
@@ -229,7 +234,108 @@ function show_dialog(dialog, title, groupName, widgetName) {
     } else {
         deleteSlotButton = document.createElement("span");
     }
-    container.append(slotLabel, dialog.slotElement, deleteSlotButton);
+    header.append(slotLabel, dialog.slotElement, deleteSlotButton);
+
+    // Filter label
+    if (dialog.type === DialogType.EDIT) {
+        const filterLabel = document.createElement("label");
+        Object.assign(filterLabel.style, {
+            textAlign: "right",
+        });
+        filterLabel.textContent = "Filter";
+
+        dialog.filterElement = document.createElement("input");
+        Object.assign(dialog.filterElement.style, {
+            width: "auto",
+            margin: "0",
+            padding: "3px 5px",
+            border: "1px solid var(--p-form-field-border-color)",
+        });
+        dialog.filterElement.value = "";
+        dialog.filterElement.disabled = (dialog.type !== DialogType.EDIT);
+        dialog.filterElement.placeholder = "Filter values...";
+
+        const clear_filter_button = document.createElement("button");
+        Object.assign(clear_filter_button.style, {
+            fontSize: "14px",
+            backgroundColor: "transparent",
+            padding: "0px",
+            border: "none",
+            cursor: "pointer",
+            width: "16px",
+            height: "16px",
+            color: "var(--p-form-field-float-label-color)",
+            alignSelf: "center",
+        })
+        clear_filter_button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"> <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /> </svg>';
+        clear_filter_button.onclick = function() {
+            dialog.filterElement.value = "";
+            dialog.filterElement.dispatchEvent(new Event('change'));
+        }
+
+        dialog.filterElement.addEventListener("input", () => {
+            const filterText = dialog.filterElement.value.toLowerCase();
+            dialog.valueElements.forEach((valueElement, index) => {
+                const conditionElement = dialog.conditionElements[index];
+                const labelElement = conditionElement.previousElementSibling;
+                const deleteButton = valueElement.nextElementSibling;
+                const value = valueElement.value;
+                const condition = conditionElement.value;
+
+                if (filterText && (value.toLowerCase().includes(filterText) || condition.toLowerCase().includes(filterText))) {
+                    // value에서 매칭되는 부분 하이라이트
+                    const valueStartIndex = value.toLowerCase().indexOf(filterText);
+                    if (valueStartIndex !== -1) {
+                        valueElement.style.background = `linear-gradient(to right, 
+                            var(--comfy-input-bg) calc(5px + ${valueStartIndex}ch),
+                            rgba(255, 0, 0, 0.2) calc(5px + ${valueStartIndex}ch),
+                            rgba(255, 0, 0, 0.2) calc(5px + ${valueStartIndex + filterText.length}ch),
+                            var(--comfy-input-bg) calc(5px + ${valueStartIndex + filterText.length}ch)
+                        )`;
+                    }
+
+                    // condition에서 매칭되는 부분 하이라이트
+                    const conditionStartIndex = condition.toLowerCase().indexOf(filterText);
+                    if (conditionStartIndex !== -1) {
+                        conditionElement.style.background = `linear-gradient(to right, 
+                            var(--comfy-input-bg) calc(5px + ${conditionStartIndex}ch),
+                            rgba(255, 0, 0, 0.2) calc(5px + ${conditionStartIndex}ch),
+                            rgba(255, 0, 0, 0.2) calc(5px + ${conditionStartIndex + filterText.length}ch),
+                            var(--comfy-input-bg) calc(5px + ${conditionStartIndex + filterText.length}ch)
+                        )`;
+                    }
+                } else {
+                    valueElement.style.background = "var(--comfy-input-bg)";
+                    conditionElement.style.background = "var(--comfy-input-bg)";
+                }
+            });
+        });
+
+        // 필터가 지워질 때 원래 상태로 복원
+        dialog.filterElement.addEventListener("change", () => {
+            if (!dialog.filterElement.value) {
+                dialog.valueElements.forEach((valueElement, index) => {
+                    const conditionElement = dialog.conditionElements[index];
+                    valueElement.style.background = "var(--comfy-input-bg)";
+                    conditionElement.style.background = "var(--comfy-input-bg)";
+                });
+            }
+        });
+
+        header.append(filterLabel, dialog.filterElement, clear_filter_button);
+    }
+
+    const value_container = document.createElement("div");
+    Object.assign(value_container.style, {
+        display: "grid",
+        gridTemplateColumns: "auto 1fr 2fr auto",
+        alignItems: "baseline",
+        gap: "0px 2px",
+        marginTop: "10px",
+        maxHeight: "60vh",
+        overflowY: "auto",
+        paddingRight: "10px"
+    });
 
     dialog.valueElements = [];
     dialog.conditionElements = [];
@@ -245,7 +351,7 @@ function show_dialog(dialog, title, groupName, widgetName) {
         const valueElement = add_new_value(dialog, "-", "", "", marker);
         valueElement.focus();
     };
-    container.append(marker, addButton);
+    value_container.append(marker, addButton);
 
     const values = widgetName == "" ? [["", ""]] : get_values_array(groupName, widgetName);
 
@@ -253,6 +359,7 @@ function show_dialog(dialog, title, groupName, widgetName) {
     values.forEach(([condition, value]) => {
         add_new_value(dialog, "-", condition, value, marker);
     });
+    container.append(header, value_container);
 
     dialog.show(title);
     Object.assign(dialog.textElement.style, {
