@@ -277,41 +277,22 @@ function show_dialog(dialog, title, groupName, widgetName) {
             const filterText = dialog.filterElement.value.toLowerCase();
             dialog.valueElements.forEach((valueElement, index) => {
                 const conditionElement = dialog.conditionElements[index];
-                const labelElement = conditionElement.previousElementSibling;
-                const deleteButton = valueElement.nextElementSibling;
                 const value = valueElement.value;
                 const condition = conditionElement.value;
 
-                if (filterText && (value.toLowerCase().includes(filterText) || condition.toLowerCase().includes(filterText))) {
-                    // value에서 매칭되는 부분 하이라이트
-                    const valueStartIndex = value.toLowerCase().indexOf(filterText);
-                    if (valueStartIndex !== -1) {
-                        valueElement.style.background = `linear-gradient(to right, 
-                            var(--comfy-input-bg) calc(5px + ${valueStartIndex}ch),
-                            rgba(255, 0, 0, 0.2) calc(5px + ${valueStartIndex}ch),
-                            rgba(255, 0, 0, 0.2) calc(5px + ${valueStartIndex + filterText.length}ch),
-                            var(--comfy-input-bg) calc(5px + ${valueStartIndex + filterText.length}ch)
-                        )`;
-                    }
-
-                    // condition에서 매칭되는 부분 하이라이트
-                    const conditionStartIndex = condition.toLowerCase().indexOf(filterText);
-                    if (conditionStartIndex !== -1) {
-                        conditionElement.style.background = `linear-gradient(to right, 
-                            var(--comfy-input-bg) calc(5px + ${conditionStartIndex}ch),
-                            rgba(255, 0, 0, 0.2) calc(5px + ${conditionStartIndex}ch),
-                            rgba(255, 0, 0, 0.2) calc(5px + ${conditionStartIndex + filterText.length}ch),
-                            var(--comfy-input-bg) calc(5px + ${conditionStartIndex + filterText.length}ch)
-                        )`;
-                    }
+                if (filterText && value.toLowerCase().includes(filterText)) {
+                    valueElement.style.background = "rgba(255, 0, 0, 0.2)";
                 } else {
                     valueElement.style.background = "var(--comfy-input-bg)";
+                }
+                if (filterText && condition.toLowerCase().includes(filterText)) {
+                    conditionElement.style.background = "rgba(255, 0, 0, 0.2)";
+                } else {
                     conditionElement.style.background = "var(--comfy-input-bg)";
                 }
             });
         });
 
-        // 필터가 지워질 때 원래 상태로 복원
         dialog.filterElement.addEventListener("change", () => {
             if (!dialog.filterElement.value) {
                 dialog.valueElements.forEach((valueElement, index) => {
