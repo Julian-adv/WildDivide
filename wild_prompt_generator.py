@@ -6,6 +6,9 @@ class WildPromptGenerator:
     @classmethod
     def INPUT_TYPES(cls):
         return {
+            "required": {
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xFFFFFFFFFFFFFFFF}),
+            },
             "optional": cls.get_menu_list()
         }
 
@@ -16,7 +19,7 @@ class WildPromptGenerator:
         for k in dict:
             if k.startswith("m/"):
                 menu.append(k)
-        menu_list = { "seed": ("INT", {"default": 0, "min": 0, "max": 0xFFFFFFFFFFFFFFFF})}
+        menu_list = {}
         for key in menu:
             values = [x.split("=>")[1].strip() if "=>" in x else x for x in dict[key]]
             menu_list[key[2:]] = (["disabled", "random"] + values, )
