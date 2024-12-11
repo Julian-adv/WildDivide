@@ -1,3 +1,4 @@
+import { api } from "../../scripts/api.js";
 import { refresh_wildcards, get_wildcards_dict } from "./wild_prompt_common.js";
 
 let addDialog = null;

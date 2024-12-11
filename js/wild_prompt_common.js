@@ -1,10 +1,14 @@
 import { api } from "../../scripts/api.js";
 
 let generator_node = null;
+let setup_node = null;
+let update_last_generated = null;
 let wildcards_dict = {};
 
-export function set_generator_node(node) {
+export function set_generator_node(node, setup_node_func, update_last_generated_func) {
     generator_node = node;
+    setup_node = setup_node_func;
+    update_last_generated = update_last_generated_func;
 }
 
 export async function load_wildcards() {

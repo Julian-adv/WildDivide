@@ -11,7 +11,7 @@ app.registerExtension({
     name: "Wild.Prompt.Generator",
     nodeCreated(node, app) {
         if (node.comfyClass == "WildPromptGenerator") {
-            set_generator_node(node);
+            set_generator_node(node, setup_node, update_last_generated);
             node.start_index = 0;
             setup_node(node);
             api.addEventListener("status", (e) => {
@@ -144,7 +144,7 @@ function close_context_menu() {
 }
 
 // Sets up the node with the wildcards.
-function setup_node(node) {
+export function setup_node(node) {
     let filtered_keys = Object.keys(wildcards_dict).filter((key) => key.startsWith("m/"));
 
     // Get current values
