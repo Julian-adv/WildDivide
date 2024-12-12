@@ -2,7 +2,7 @@ import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 import { get_tooltips_shown, show_last_generated, update_last_generated,
          set_tooltip_position_all, clear_tooltips } from "./wild_prompt_tooltip.js";
-import { show_add_dialog, show_edit_dialog, show_group_dialog } from "./wild_prompt_dialog.js";
+import { show_add_dialog, show_edit_dialog, show_group_dialog, show_edit_group_dialog } from "./wild_prompt_dialog.js";
 import { set_generator_node, refresh_wildcards, load_wildcards, get_wildcards_dict } from "./wild_prompt_common.js";
 
 let wildcards_dict = await load_wildcards();
@@ -13,7 +13,7 @@ app.registerExtension({
         if (node.comfyClass == "WildPromptGenerator") {
             set_generator_node(node, setup_node, update_last_generated);
             node.start_index = 0;
-            setup_node(node);
+            setup_node(node, wildcards_dict);
             api.addEventListener("status", (e) => {
                 // Update when image is generated
                 if (e.detail.exec_info.queue_remaining == 0) {
@@ -143,7 +143,8 @@ function close_context_menu(node) {
 }
 
 // Sets up the node with the wildcards.
-export function setup_node(node) {
+export function setup_node(node, new_wildcards_dict) {
+    wildcards_dict = new_wildcards_dict;
     let filtered_keys = Object.keys(wildcards_dict).filter((key) => key.startsWith("m/"));
 
     // Get current values
@@ -457,7 +458,7 @@ function add_group_widget(node, widgetName, visible) {
     });
     button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"> <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /> </svg>';
     button.onclick = () => {
-        show_edit_dialog(widgetName, node);
+        show_edit_group_dialog(widgetName, node);
     };
     container.append(label, button);
 

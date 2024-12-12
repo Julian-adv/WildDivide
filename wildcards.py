@@ -427,6 +427,18 @@ def add_slot(name, values):
 def remove_last_key(key):
     return '/'.join(key.split('/')[:-1])
 
+def delete_group(name):
+    local_wildcard_dict = get_wildcard_dict()
+    name = name.strip()
+    if name == "":
+        return
+    name = wildcard_normalize(name)
+    name = f"m/{name}"
+    for k in list(local_wildcard_dict.keys()):
+        if k.startswith(name):
+            del local_wildcard_dict[k]
+    save_wildcard_dict(local_wildcard_dict)
+
 def delete_slot(name):
     local_wildcard_dict = get_wildcard_dict()
     name = name.strip()

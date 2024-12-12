@@ -32,6 +32,13 @@ export function show_edit_dialog(widgetName, node) {
     show_dialog(editDialog, `Edit Slot: ${widgetName}`, groupName, widgetName);
 }
 
+export function show_edit_group_dialog(groupName, node) {
+    if (!groupDialog) {
+        groupDialog = setup_dialog(DialogType.GROUP, node, null);
+    }
+    show_dialog(groupDialog, `Edit Group: ${groupName}`, groupName, "");
+}
+
 export function show_group_dialog(node) {
     if (!groupDialog) {
         groupDialog = setup_dialog(DialogType.GROUP, node, null);
@@ -190,7 +197,29 @@ function show_dialog(dialog, title, groupName, widgetName) {
     dialog.groupElement.value = groupName || "";
     dialog.groupElement.disabled = (dialog.type === DialogType.EDIT);
 
-    header.append(groupLabel, dialog.groupElement, document.createElement("span"));
+    // Delete group button
+    let delete_group_button = null;
+    if (dialog.type === DialogType.GROUP) {
+        delete_group_button = document.createElement("button");
+        Object.assign(delete_group_button.style, {
+            fontSize: "14px",
+            backgroundColor: "transparent",
+            padding: "0px",
+            border: "none",
+            cursor: "pointer",
+            width: "16px",
+            height: "16px",
+            color: "var(--p-form-field-float-label-color)",
+        });
+        delete_group_button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"> <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /> </svg>';
+        delete_group_button.onclick = async function() {
+            await delete_group(group_from_dialog(dialog));
+            dialog.close();
+        };
+    } else {
+        delete_group_button = document.createElement("span");
+    }
+    header.append(groupLabel, dialog.groupElement, delete_group_button);
 
     // Slot label
     const slotLabel = document.createElement("label");
@@ -377,8 +406,12 @@ function alert_message(dialog, message) {
     }, 4000);
 }
 
+function group_from_dialog(dialog) {
+    return dialog.groupElement.value;
+}
+
 function key_from_dialog(dialog) {
-    if (dialog.slotElement.value == "") {
+    if (dialog.slotElement.value === "") {
         return "";
     }
     return dialog.groupElement.value ?
@@ -398,6 +431,16 @@ async function save_slot(name, values) {
         body: JSON.stringify({ name, values }),
     });
     await refresh_wildcards();
+}
+
+async function delete_group(name) {
+    if (window.confirm("Are you sure you want to delete this group?")) {
+        await api.fetchApi("/wilddivide/delete_group", {
+            method: "POST",
+            body: JSON.stringify({ name }),
+        });
+        await refresh_wildcards();
+    }
 }
 
 async function delete_slot(name) {

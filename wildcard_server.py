@@ -32,6 +32,12 @@ async def add_slot(request):
     wildcards.add_slot(data["name"], data["values"])
     return web.json_response({"status": "success"})
 
+@PromptServer.instance.routes.post("/wilddivide/delete_group")
+async def delete_group(request):
+    data = await request.json()
+    wildcards.delete_group(data["name"])
+    return web.json_response({"status": "success"})
+
 @PromptServer.instance.routes.post("/wilddivide/delete_slot")
 async def delete_slot(request):
     data = await request.json()

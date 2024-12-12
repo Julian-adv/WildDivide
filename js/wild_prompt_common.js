@@ -28,9 +28,9 @@ export function get_wildcards_dict() {
 
 // Called when the refresh button is clicked.
 export async function refresh_wildcards() {
-    await load_wildcards();
+    wildcards_dict = await load_wildcards();
     if (generator_node) {
-        setup_node(generator_node);
+        setup_node(generator_node, wildcards_dict);
         console.log("Wild prompt generator refreshed");
         app.graph.setDirtyCanvas(true);
         setTimeout(() => {
