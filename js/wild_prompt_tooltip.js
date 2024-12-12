@@ -81,6 +81,15 @@ function create_tooltip(widget) {
         e.stopPropagation();
         tooltip.style.display = "none";
     };
+    // Show full tooltip when hovered
+    tooltip.onmouseover = (e) => {
+        e.stopPropagation();
+        tooltip.style.maxWidth = '70vw';
+    }
+    tooltip.onmouseleave = (e) => {
+        e.stopPropagation();
+        tooltip.style.maxWidth = `${widget.select_elem.offsetWidth}px`;
+    }
     const text = document.createElement("span");
     text.style.cssText = `
         text-overflow: ellipsis;

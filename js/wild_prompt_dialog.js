@@ -1,5 +1,7 @@
 import { api } from "../../scripts/api.js";
-import { refresh_wildcards, get_wildcards_dict } from "./wild_prompt_common.js";
+import { refresh_wildcards, get_wildcards_dict} from "./wild_prompt_common.js";
+import { update_last_generated } from "./wild_prompt_tooltip.js";
+import { update_context_menu } from "./wild_prompt_generator.js";
 
 let addDialog = null;
 let editDialog = null;
@@ -11,16 +13,16 @@ const DialogType = {
     GROUP: 2
 }
 
-export function show_add_dialog(group_name) {
+export function show_add_dialog(group_name, node) {
     if (!addDialog) {
-        addDialog = setup_dialog(DialogType.ADD);
+        addDialog = setup_dialog(DialogType.ADD, node, null);
     }
     show_dialog(addDialog, "Add Slot", group_name, "");
 }
 
-export function show_edit_dialog(widgetName) {
+export function show_edit_dialog(widgetName, node) {
     if (!editDialog) {
-        editDialog = setup_dialog(DialogType.EDIT);
+        editDialog = setup_dialog(DialogType.EDIT, node, widgetName);
     }
     let groupName = "";
     if (widgetName.includes("/")) {
@@ -30,14 +32,14 @@ export function show_edit_dialog(widgetName) {
     show_dialog(editDialog, `Edit Slot: ${widgetName}`, groupName, widgetName);
 }
 
-export function show_group_dialog() {
+export function show_group_dialog(node) {
     if (!groupDialog) {
-        groupDialog = setup_dialog(DialogType.GROUP);
+        groupDialog = setup_dialog(DialogType.GROUP, node, null);
     }
     show_dialog(groupDialog, "Add Group", "", "");
 }
 
-function setup_dialog(dialogType) {
+function setup_dialog(dialogType, node, widget_name) {
     const dialog = setup_common_dialog(dialogType, "Save", async function (dialog) {
         const wildcards_dict = get_wildcards_dict();
 
@@ -50,14 +52,15 @@ function setup_dialog(dialogType) {
         const key = key_from_dialog(dialog);
         // check if key exists
         if (key == "") {
-            alert_message(dialog, "Key cannot be empty");
+            alert_message(dialog, "Slot cannot be empty");
         } else if (wildcards_dict[`m/${key}`] && dialog.type !== DialogType.EDIT) {
-            alert_message(dialog, "Key already exists");
+            alert_message(dialog, "Slot already exists");
         } else {
             await save_slot(key, values);
             dialog.close();
             setTimeout(() => {
-                update_last_generated(generator_node);
+                update_last_generated(node);
+                update_context_menu(node, widget_name);
             }, 10);
         }
     });

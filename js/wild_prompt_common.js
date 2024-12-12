@@ -11,6 +11,10 @@ export function set_generator_node(node, setup_node_func, update_last_generated_
     update_last_generated = update_last_generated_func;
 }
 
+export function get_generator_node() {
+    return generator_node;
+}
+
 export async function load_wildcards() {
     let res = await api.fetchApi("/wilddivide/wildcards/dict");
     let data = await res.json();

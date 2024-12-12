@@ -1,11 +1,11 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
-import { get_tooltips_shown, set_tooltips_shown, show_last_generated, update_last_generated,
+import { get_tooltips_shown, show_last_generated, update_last_generated,
          set_tooltip_position_all, clear_tooltips } from "./wild_prompt_tooltip.js";
 import { show_add_dialog, show_edit_dialog, show_group_dialog } from "./wild_prompt_dialog.js";
-import { set_generator_node, refresh_wildcards, load_wildcards } from "./wild_prompt_common.js";
+import { set_generator_node, refresh_wildcards, load_wildcards, get_wildcards_dict } from "./wild_prompt_common.js";
 
-const wildcards_dict = await load_wildcards();
+let wildcards_dict = await load_wildcards();
 
 app.registerExtension({
     name: "Wild.Prompt.Generator",
@@ -84,7 +84,7 @@ function setValueColor(el, value) {
     }
 }
 
-function calculate_context_menu_position(x, y, element, context_menu) {
+function calculate_context_menu_position(element, context_menu) {
     const window_width = window.innerWidth;
     const window_height = window.innerHeight;
     const rect = element.getBoundingClientRect();
@@ -134,12 +134,11 @@ function calculate_context_menu_position(x, y, element, context_menu) {
 let fromKey = null;
 let group_name = null;
 let show_tooltips_checkbox = null;
-let current_context_menu = null;
 
-function close_context_menu() {
-    if (current_context_menu) {
-        current_context_menu.style.display = "none";
-        current_context_menu = null;
+function close_context_menu(node) {
+    if (node.context_menu) {
+        node.context_menu.style.display = "none";
+        node.context_menu = null;
     }
 }
 
@@ -163,8 +162,7 @@ export function setup_node(node) {
     for (const key of filtered_keys) {
         const slotName = key.substring(2); // Remove "m/" prefix
         const group_node = slotName.includes("/");
-        const mapped_values = wildcards_dict[key].map((value) => value.includes("=>") ? value.split("=>")[1].trim() : value);
-        const values = ["disabled", "random", ...mapped_values];
+        const values = values_for_key(slotName);
         const value = find_similar_value(old_values, values, slotName);
         if (group_node) {
             check_group_name(node, slotName, value, values, true);
@@ -175,6 +173,11 @@ export function setup_node(node) {
     add_buttons_widget(node);
     node.size[0] = width;
     setup_node_hidden(node);
+    document.addEventListener('click', () => {
+        close_context_menu(node);
+        set_tooltip_position_all(node);
+    });
+
 }
 
 const widget_height = 20;
@@ -297,66 +300,10 @@ function add_combo_widget(node, widgetName, value, values, visible) {
     container.append(combo);
 
     // Create context menu
-    const contextMenu = document.createElement("div");
-    Object.assign(contextMenu.style, {
-        display: "none",
-        position: "fixed",
-        backgroundColor: "var(--comfy-menu-bg)",
-        minWidth: "100px",
-        maxHeight: "70vh",
-        overflowY: "auto",
-        boxShadow: "0px 8px 16px 0px rgba(0,0,0,0.2)",
-        zIndex: "100",
-        padding: "2px",
-        borderRadius: "4px",
-        border: "1px solid var(--p-form-field-border-color)",
-    });
-
-    select_elem.addEventListener('click', (e) => {
+    select_elem.onclick = (e) => {
         e.stopPropagation();
-        if (current_context_menu == contextMenu) {
-            close_context_menu();
-        } else {
-            close_context_menu();
-            contextMenu.style.display = "block";
-            current_context_menu = contextMenu;
-            const [x, y] = calculate_context_menu_position(e.clientX, e.clientY, select_elem, contextMenu);
-            contextMenu.style.left = `${x}px`;
-            contextMenu.style.top = `${y}px`;
-        }
-    });
-    document.addEventListener('click', () => {
-        close_context_menu();
-        set_tooltip_position_all(node);
-    });
-
-    // Create menu items
-    for (const v of values) {
-        let option = document.createElement("a");
-        option.href = "#";
-        Object.assign(option.style, {
-            backgroundColor: "var(--comfy-menu-bg)",
-            display: "block",
-            padding: "2px",
-            color: "var(--fg-color)",
-            textDecoration: "none",
-            fontSize: "12px",
-        });
-        setValueColor(option, v);
-        option.addEventListener('mouseover', () => {
-            option.style.backgroundColor = "var(--p-form-field-hover-border-color)";
-        });
-        option.addEventListener('mouseout', () => {
-            option.style.backgroundColor = "var(--comfy-menu-bg)";
-        });
-        option.addEventListener('click', () => {
-            setValueColor(select_elem, v);
-            contextMenu.style.display = "none";
-            isMouseDown = false;
-        });
-        contextMenu.append(option);
+        show_context_menu(node, select_elem);
     }
-    document.body.appendChild(contextMenu);
 
     // Create edit button for the combo
     const button = document.createElement("button")
@@ -371,7 +318,7 @@ function add_combo_widget(node, widgetName, value, values, visible) {
     });
     button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"> <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /> </svg>';
     button.onclick = () => {
-        show_edit_dialog(widgetName);
+        show_edit_dialog(widgetName, node);
     };
     container.append(button);
 
@@ -398,7 +345,89 @@ function add_combo_widget(node, widgetName, value, values, visible) {
         if (widget.tooltip) {
             widget.tooltip.remove();
         }
+        if (widget.select_elem.context_menu) {
+            widget.select_elem.context_menu.remove();
+        }
+        widget.select_elem.remove();
     };
+}
+
+function show_context_menu(node, select_elem) {
+    const old_context_menu = node.context_menu;
+    close_context_menu(node);
+    if (old_context_menu !== select_elem.context_menu || !select_elem.context_menu) {
+        if (!select_elem.context_menu) {
+            create_context_menu(select_elem);
+        }
+        select_elem.context_menu.style.display = "block";
+        node.context_menu = select_elem.context_menu;
+        const [x, y] = calculate_context_menu_position(select_elem, select_elem.context_menu);
+        select_elem.context_menu.style.left = `${x}px`;
+        select_elem.context_menu.style.top = `${y}px`;
+    }
+}
+
+export function update_context_menu(node, widget_name) {
+    if (!widget_name) {
+        return;
+    }
+    const select_elem = node.widgets.find((widget) => widget.name === widget_name).select_elem;
+    wildcards_dict = get_wildcards_dict();
+    create_context_menu(select_elem);
+}
+
+// Create context menu
+function create_context_menu(select_elem) {
+    const values = values_for_key(select_elem.closest('.widget-container').querySelector('label').textContent);
+    const context_menu = document.createElement("div");
+    Object.assign(context_menu.style, {
+        display: "none",
+        position: "fixed",
+        backgroundColor: "var(--comfy-menu-bg)",
+        minWidth: "100px",
+        maxHeight: "70vh",
+        overflowY: "auto",
+        boxShadow: "0px 8px 16px 0px rgba(0,0,0,0.2)",
+        zIndex: "100",
+        padding: "2px",
+        borderRadius: "4px",
+        border: "1px solid var(--p-form-field-border-color)",
+    });
+
+    // Create menu items
+    for (const v of values) {
+        let option = document.createElement("a");
+        option.href = "#";
+        Object.assign(option.style, {
+            backgroundColor: "var(--comfy-menu-bg)",
+            display: "block",
+            padding: "2px",
+            color: "var(--fg-color)",
+            textDecoration: "none",
+            fontSize: "12px",
+        });
+        setValueColor(option, v);
+        option.addEventListener('mouseover', () => {
+            option.style.backgroundColor = "var(--p-form-field-hover-border-color)";
+        });
+        option.addEventListener('mouseout', () => {
+            option.style.backgroundColor = "var(--comfy-menu-bg)";
+        });
+        option.addEventListener('click', () => {
+            setValueColor(select_elem, v);
+            context_menu.style.display = "none";
+        });
+        context_menu.append(option);
+    }
+    document.body.appendChild(context_menu);
+    select_elem.context_menu = context_menu;
+}
+
+function values_for_key(widget_name) {
+    const key = `m/${widget_name}`;
+    const mapped_values = wildcards_dict[key].map((value) => value.includes("=>") ? value.split("=>")[1].trim() : value);
+    const values = ["disabled", "random", ...mapped_values];
+    return values;
 }
 
 function add_group_widget(node, widgetName, visible) {
@@ -428,7 +457,7 @@ function add_group_widget(node, widgetName, visible) {
     });
     button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"> <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /> </svg>';
     button.onclick = () => {
-        show_edit_dialog(widgetName);
+        show_edit_dialog(widgetName, node);
     };
     container.append(label, button);
 
@@ -509,11 +538,11 @@ function add_buttons_widget(node) {
         },
         {
             text: "🎰 Add slot",
-            onClick: () => show_add_dialog(group_name)
+            onClick: () => show_add_dialog(group_name, node)
         },
         {
             text: "📁 Add group",
-            onClick: () => show_group_dialog()
+            onClick: () => show_group_dialog(node)
         }
     ];
 
@@ -633,7 +662,7 @@ function scroll_widgets(e, node) {
             node.start_index -= 1;
         }
     }
-    close_context_menu();
+    close_context_menu(node);
     setup_node_hidden(node);
     app.graph.setDirtyCanvas(true, true);
     update_last_generated(node);
