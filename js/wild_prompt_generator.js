@@ -2,7 +2,7 @@ import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 import { get_tooltips_shown, show_last_generated, update_last_generated,
          set_tooltip_position_all, clear_tooltips } from "./wild_prompt_tooltip.js";
-import { show_add_dialog, show_edit_dialog, show_group_dialog, show_edit_group_dialog } from "./wild_prompt_dialog.js";
+import { show_add_dialog, show_edit_dialog, show_group_dialog, show_edit_group_dialog, join_group_key } from "./wild_prompt_dialog.js";
 import { set_generator_node, refresh_wildcards, load_wildcards, get_wildcards_dict } from "./wild_prompt_common.js";
 
 let wildcards_dict = await load_wildcards();
@@ -134,6 +134,7 @@ function calculate_context_menu_position(element, context_menu) {
 let fromKey = null;
 let group_name = null;
 let show_tooltips_checkbox = null;
+let auto_template_checkbox = null;
 
 function close_context_menu(node) {
     if (node.context_menu) {
@@ -485,6 +486,8 @@ function add_group_widget(node, widgetName, visible) {
     group_name = widgetName;
 }
 
+let auto_template = false;
+
 function add_buttons_widget(node) {
     const container = document.createElement("div");
     Object.assign(container.style, {
@@ -536,8 +539,45 @@ function add_buttons_widget(node) {
             onClick: () => set_last_generated(node)
         },
         {
+            text: "Auto template",
+            onClick: () => {
+                auto_template_checkbox.checked = !auto_template_checkbox.checked;
+            },
+            onInit: (button) => {
+                // Style button as flex container
+                Object.assign(button.style, {
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    paddingBottom: "0",
+                });
+                
+                // Create checkbox
+                auto_template_checkbox = document.createElement("input");
+                auto_template_checkbox.type = "checkbox";
+                auto_template_checkbox.checked = auto_template;
+                Object.assign(auto_template_checkbox.style, {
+                    margin: "0",
+                    cursor: "pointer",
+                });
+                
+                // Prevent checkbox from triggering button click
+                auto_template_checkbox.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    auto_template = auto_template_checkbox.checked;
+                });
+                
+                // Add checkbox to button
+                button.prepend(auto_template_checkbox);
+            }
+        },
+        {
             text: "🔄 All random",
             onClick: () => set_all_random(node)
+        },
+        {
+            text: "⏹️ All disabled",
+            onClick: () => set_all_disabled(node)
         },
         {
             text: "🎰 Add slot",
@@ -569,18 +609,19 @@ function add_buttons_widget(node) {
         container.append(button);
     });
 
-    const widget = node.addDOMWidget("buttons", "buttons", container, {
-        getHeight() {
-            return 78;
+    const widget = node.addDOMWidget("auto_template", "buttons", container, {
+        getValue() {
+            return auto_template_checkbox.checked;
         },
         onDraw(w) {
             Object.assign(w.element.style, {
                 display: "flex",
-                height: "48px",
+                height: "80px",
             });
         }
     });
     widget.container = container;
+    widget.computeSize = () => [0, 84];
     widget.onRemove = () => {
         container.remove();
     };
@@ -605,6 +646,14 @@ function set_all_random(node) {
     for (const widget of node.widgets.slice(2)) {
         widget.value = "random";
     }
+    clear_tooltips(node);
+}
+
+function set_all_disabled(node) {
+    for (const widget of node.widgets.slice(2)) {
+        widget.value = "disabled";
+    }
+    clear_tooltips(node);
 }
 
 function add_version_widget(node) {
@@ -617,6 +666,7 @@ function add_version_widget(node) {
         gap: "5px",
         border: "none",
         color: "var(--p-form-field-float-label-color)",
+        marginTop: "10px",
     });
 
     const label = document.createElement("label");

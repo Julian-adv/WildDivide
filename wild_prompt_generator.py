@@ -8,6 +8,7 @@ class WildPromptGenerator:
         return {
             "required": {
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xFFFFFFFFFFFFFFFF}),
+                "auto_template": ("BOOLEAN", {"default": False}),
             },
             "optional": cls.get_menu_list()
         }
@@ -33,8 +34,33 @@ class WildPromptGenerator:
 
     def generate_prompt(self, **kwargs):
         global last_generated
-        prompt, last_generated = wildcards.process("__m/template__", kwargs["seed"], kwargs)
+
+        if kwargs["auto_template"]:
+            template = self.generate_template(**kwargs)
+        else:
+            template = "__m/template__"
+        print(template)
+
+        prompt, last_generated = wildcards.process(template, kwargs["seed"], kwargs)
         return { "ui": { "last_generated": last_generated.items() }, "result": (prompt, ) }
+
+    def generate_template(self, **kwargs):
+        template = ""
+        prev_group = ""
+        group = ""
+        for k in kwargs:
+            if kwargs[k] == "disabled" or k == "seed" or k == "auto_template" or k == "template":
+                continue
+            if kwargs[k] == "random":
+                template += f"__m/{k}__, "
+                continue
+            if "/" in k:
+                group = k.split("/")[0]
+                if group != prev_group:
+                    prev_group = group
+                    template += "BREAK "
+            template += f"{kwargs[k]}, "
+        return template
 
 def get_last_generated():
     global last_generated
