@@ -3,6 +3,7 @@ from . import wildcards
 from . import wild_prompt_generator
 from aiohttp import web
 
+VERSION = "0.3.0"
 
 @PromptServer.instance.routes.get("/wilddivide/refresh")
 async def wildcards_refresh(request):
@@ -53,6 +54,11 @@ async def reorder_slot(request):
 @PromptServer.instance.routes.get("/wilddivide/last_generated")
 async def last_generated(request):
     data = {"data": wild_prompt_generator.get_last_generated()}
+    return web.json_response(data)
+
+@PromptServer.instance.routes.get("/wilddivide/version")
+async def version(request):
+    data = {"version": VERSION}
     return web.json_response(data)
 
 def onprompt_populate_wildcards(json_data):

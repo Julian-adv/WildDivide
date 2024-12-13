@@ -172,6 +172,7 @@ export function setup_node(node, new_wildcards_dict) {
         }
     }
     add_buttons_widget(node);
+    add_version_widget(node);
     node.size[0] = width;
     setup_node_hidden(node);
     document.addEventListener('click', () => {
@@ -190,7 +191,8 @@ function setup_node_hidden(node) {
     let end_y = 0;
     const max_height = document.documentElement.clientHeight - 250;
     let state = "before"
-    for (let i = 0; i < node.widgets.length - 3; i++) {
+    // exclude first 2 widgets(seed, control_after_generate) and last 2 widgets(buttons, version)
+    for (let i = 0; i < node.widgets.length - 4; i++) {
         const widget = node.widgets[i + 2];
         if (state === "before") {
             if (i === node.start_index) {
@@ -603,6 +605,46 @@ function set_all_random(node) {
     for (const widget of node.widgets.slice(2)) {
         widget.value = "random";
     }
+}
+
+function add_version_widget(node) {
+    const container = document.createElement("div");
+    Object.assign(container.style, {
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "center",
+        fontSize: "12px",
+        gap: "5px",
+        border: "none",
+        color: "var(--p-form-field-float-label-color)",
+    });
+
+    const label = document.createElement("label");
+    label.textContent = "Version:";
+    container.append(label);
+
+    const version = document.createElement("span");
+    container.append(version);
+
+    api.fetchApi("/wilddivide/version").then(async (res) => {
+        console.log(res);
+        let data = await res.json();
+        console.log(data);
+        version.textContent = "v" + data.version;
+    })
+
+    const widget = node.addDOMWidget("version", "version", container, {
+        onDraw(w) {
+            Object.assign(w.element.style, {
+                display: "flex",
+                height: "22px",
+            });
+        }
+    });
+    widget.container = container;
+    widget.onRemove = () => {
+        container.remove();
+    };
 }
 
 function create_draggable_container(widgetName, node) {
