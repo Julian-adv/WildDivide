@@ -2,7 +2,7 @@ import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 import { get_tooltips_shown, show_last_generated, update_last_generated,
          set_tooltip_position_all, clear_tooltips } from "./wild_prompt_tooltip.js";
-import { show_add_dialog, show_edit_dialog, show_group_dialog, show_edit_group_dialog, join_group_key } from "./wild_prompt_dialog.js";
+import { show_add_dialog, show_edit_dialog, show_add_group_dialog, show_edit_group_dialog, join_group_key } from "./wild_prompt_dialog.js";
 import { set_generator_node, refresh_wildcards, load_wildcards, get_wildcards_dict } from "./wild_prompt_common.js";
 
 let wildcards_dict = await load_wildcards();
@@ -584,7 +584,7 @@ function add_buttons_widget(node) {
         },
         {
             text: "📁 Add group",
-            onClick: () => show_group_dialog(node)
+            onClick: () => show_add_group_dialog(node)
         }
     ];
 

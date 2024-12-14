@@ -5,12 +5,14 @@ import { update_context_menu } from "./wild_prompt_generator.js";
 
 let addDialog = null;
 let editDialog = null;
-let groupDialog = null;
+let add_group_dialog = null;
+let edit_group_dialog = null;
 
 const DialogType = {
     ADD: 0,
     EDIT: 1,
-    GROUP: 2
+    ADD_GROUP: 2,
+    EDIT_GROUP: 3
 }
 
 export function show_add_dialog(group_name, node) {
@@ -33,42 +35,56 @@ export function show_edit_dialog(widgetName, node) {
 }
 
 export function show_edit_group_dialog(groupName, node) {
-    if (!groupDialog) {
-        groupDialog = setup_dialog(DialogType.GROUP, node, null);
+    if (!edit_group_dialog) {
+        edit_group_dialog = setup_dialog(DialogType.EDIT_GROUP, node, null);
     }
-    show_dialog(groupDialog, `Edit Group: ${groupName}`, groupName, "");
+    edit_group_dialog.org_name = groupName;
+    show_dialog(edit_group_dialog, `Edit Group: ${groupName}`, groupName, "");
 }
 
-export function show_group_dialog(node) {
-    if (!groupDialog) {
-        groupDialog = setup_dialog(DialogType.GROUP, node, null);
+export function show_add_group_dialog(node) {
+    if (!add_group_dialog) {
+        add_group_dialog = setup_dialog(DialogType.ADD_GROUP, node, null);
     }
-    show_dialog(groupDialog, "Add Group", "", "");
+    show_dialog(add_group_dialog, "Add Group", "", "");
 }
 
 function setup_dialog(dialogType, node, widget_name) {
     const dialog = setup_common_dialog(dialogType, "Save", async function (dialog) {
-        const wildcards_dict = get_wildcards_dict();
-
-        let values = "- " + dialog.valueElements.map((element, index) => {
-            const condition = dialog.conditionElements[index].value || "";
-            const value = element.value || "";
-            return condition ? `${condition} => ${value}` : value;
-        }).join("\n- ");
-
-        const key = key_from_dialog(dialog);
-        // check if key exists
-        if (key == "") {
-            alert_message(dialog, "Slot cannot be empty");
-        } else if (wildcards_dict[`m/${key}`] && dialog.type !== DialogType.EDIT) {
-            alert_message(dialog, "Slot already exists");
-        } else {
-            await save_slot(key, values);
+        if (dialog.type === DialogType.EDIT_GROUP) {
+            const new_name = group_from_dialog(dialog);
+            if (dialog.org_name === new_name) {
+                return;
+            }
+            if (new_name === "") {
+                alert_message(dialog, "Group cannot be empty");
+                return;
+            }
+            await edit_group(dialog.org_name, new_name);
             dialog.close();
-            setTimeout(() => {
-                update_last_generated(node);
-                update_context_menu(node, widget_name);
-            }, 10);
+        } else {
+            const wildcards_dict = get_wildcards_dict();
+
+            let values = "- " + dialog.valueElements.map((element, index) => {
+                const condition = dialog.conditionElements[index].value || "";
+                const value = element.value || "";
+                return condition ? `${condition} => ${value}` : value;
+            }).join("\n- ");
+
+            const key = key_from_dialog(dialog);
+            // check if key exists
+            if (key == "") {
+                alert_message(dialog, "Slot cannot be empty");
+            } else if (wildcards_dict[`m/${key}`] && dialog.type !== DialogType.EDIT) {
+                alert_message(dialog, "Slot already exists");
+            } else {
+                await save_slot(key, values);
+                dialog.close();
+                setTimeout(() => {
+                    update_last_generated(node);
+                    update_context_menu(node, widget_name);
+                }, 10);
+            }
         }
     });
     return dialog;
@@ -199,7 +215,7 @@ function show_dialog(dialog, title, groupName, widgetName) {
 
     // Delete group button
     let delete_group_button = null;
-    if (dialog.type === DialogType.GROUP) {
+    if (dialog.type === DialogType.EDIT_GROUP) {
         delete_group_button = document.createElement("button");
         Object.assign(delete_group_button.style, {
             fontSize: "14px",
@@ -221,53 +237,56 @@ function show_dialog(dialog, title, groupName, widgetName) {
     }
     header.append(groupLabel, dialog.groupElement, delete_group_button);
 
-    // Slot label
-    const slotLabel = document.createElement("label");
-    Object.assign(slotLabel.style, {
-        textAlign: "right",
-    });
-    slotLabel.textContent = "Slot";
-
-    dialog.slotElement = document.createElement("input");
-    Object.assign(dialog.slotElement.style, {
-        width: "auto",
-        margin: "0",
-        padding: "3px 5px",
-        border: "1px solid var(--p-form-field-border-color)",
-    });
-    dialog.slotElement.disabled = (dialog.type === DialogType.EDIT);
-    if (dialog.type === DialogType.EDIT) {
-        dialog.slotElement.value = widgetName;
-    } else {
-        dialog.slotElement.value = "";
-    }
-    
-    prevent_invalid_input(dialog.groupElement);
-    prevent_invalid_input(dialog.slotElement);
-    
-    // Delete button
-    let deleteSlotButton = null;
-    if (dialog.type === DialogType.EDIT) {
-        deleteSlotButton = document.createElement("button");
-        Object.assign(deleteSlotButton.style, {
-            fontSize: "14px",
-            backgroundColor: "transparent",
-            padding: "0px",
-            border: "none",
-            cursor: "pointer",
-            width: "16px",
-            height: "16px",
-            color: "var(--p-form-field-float-label-color)",
+    // Only show slot and value fields if not editing a group
+    if (dialog.type === DialogType.ADD || dialog.type === DialogType.EDIT || dialog.type === DialogType.ADD_GROUP) {
+        // Slot label
+        const slotLabel = document.createElement("label");
+        Object.assign(slotLabel.style, {
+            textAlign: "right",
         });
-        deleteSlotButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"> <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /> </svg>';
-        deleteSlotButton.onclick = async function() {
-            await delete_slot(key_from_dialog(dialog));
-            dialog.close();
-        };
-    } else {
-        deleteSlotButton = document.createElement("span");
+        slotLabel.textContent = "Slot";
+
+        dialog.slotElement = document.createElement("input");
+        Object.assign(dialog.slotElement.style, {
+            width: "auto",
+            margin: "0",
+            padding: "3px 5px",
+            border: "1px solid var(--p-form-field-border-color)",
+        });
+        dialog.slotElement.disabled = (dialog.type === DialogType.EDIT);
+        if (dialog.type === DialogType.EDIT) {
+            dialog.slotElement.value = widgetName;
+        } else {
+            dialog.slotElement.value = "";
+        }
+        
+        prevent_invalid_input(dialog.groupElement);
+        prevent_invalid_input(dialog.slotElement);
+        
+        // Delete button
+        let deleteSlotButton = null;
+        if (dialog.type === DialogType.EDIT) {
+            deleteSlotButton = document.createElement("button");
+            Object.assign(deleteSlotButton.style, {
+                fontSize: "14px",
+                backgroundColor: "transparent",
+                padding: "0px",
+                border: "none",
+                cursor: "pointer",
+                width: "16px",
+                height: "16px",
+                color: "var(--p-form-field-float-label-color)",
+            });
+            deleteSlotButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"> <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /> </svg>';
+            deleteSlotButton.onclick = async function() {
+                await delete_slot(key_from_dialog(dialog));
+                dialog.close();
+            };
+        } else {
+            deleteSlotButton = document.createElement("span");
+        }
+        header.append(slotLabel, dialog.slotElement, deleteSlotButton);
     }
-    header.append(slotLabel, dialog.slotElement, deleteSlotButton);
 
     // Filter label
     if (dialog.type === DialogType.EDIT) {
@@ -338,42 +357,46 @@ function show_dialog(dialog, title, groupName, widgetName) {
 
         header.append(filterLabel, dialog.filterElement, clear_filter_button);
     }
-
-    const value_container = document.createElement("div");
-    Object.assign(value_container.style, {
-        display: "grid",
-        gridTemplateColumns: "auto 1fr 2fr auto",
-        alignItems: "baseline",
-        gap: "0px 2px",
-        marginTop: "10px",
-        maxHeight: "60vh",
-        overflowY: "auto",
-        paddingRight: "10px"
-    });
+    container.append(header);
 
     dialog.valueElements = [];
     dialog.conditionElements = [];
-    const marker = document.createElement("span");
-    const addButton = document.createElement("button");
-    Object.assign(addButton.style, {
-        fontSize: "14px",
-        backgroundColor: "transparent",
-        gridColumn: "2 / span 2",
-    });
-    addButton.textContent = "Add new value (shift+⏎)";
-    addButton.onclick = function () {
-        const valueElement = add_new_value(dialog, "-", "", "", marker);
-        valueElement.focus();
-    };
-    value_container.append(marker, addButton);
 
-    const values = widgetName == "" ? [["", ""]] : get_values_array(groupName, widgetName);
+    if (dialog.type === DialogType.ADD || dialog.type === DialogType.EDIT || dialog.type === DialogType.ADD_GROUP) {
+        const value_container = document.createElement("div");
+        Object.assign(value_container.style, {
+            display: "grid",
+            gridTemplateColumns: "auto 1fr 2fr auto",
+            alignItems: "baseline",
+            gap: "0px 2px",
+            marginTop: "10px",
+            maxHeight: "60vh",
+            overflowY: "auto",
+            paddingRight: "10px"
+        });
 
-    add_column_header(dialog, marker);
-    values.forEach(([condition, value]) => {
-        add_new_value(dialog, "-", condition, value, marker);
-    });
-    container.append(header, value_container);
+        const marker = document.createElement("span");
+        const addButton = document.createElement("button");
+        Object.assign(addButton.style, {
+            fontSize: "14px",
+            backgroundColor: "transparent",
+            gridColumn: "2 / span 2",
+        });
+        addButton.textContent = "Add new value (shift+⏎)";
+        addButton.onclick = function () {
+            const valueElement = add_new_value(dialog, "-", "", "", marker);
+            valueElement.focus();
+        };
+        value_container.append(marker, addButton);
+
+        const values = widgetName == "" ? [["", ""]] : get_values_array(groupName, widgetName);
+
+        add_column_header(dialog, marker);
+        values.forEach(([condition, value]) => {
+            add_new_value(dialog, "-", condition, value, marker);
+        });
+        container.append(value_container);
+    }
 
     dialog.show(title);
     Object.assign(dialog.textElement.style, {
@@ -386,7 +409,7 @@ function show_dialog(dialog, title, groupName, widgetName) {
             dialog.valueElements[dialog.valueElements.length - 1].focus();
             dialog.valueElements[dialog.valueElements.length - 1].scrollIntoView({ behavior: "smooth", block: "center" });
         }, 100);
-    } else if (dialog.type === DialogType.GROUP) {
+    } else if (dialog.type === DialogType.ADD_GROUP || dialog.type === DialogType.EDIT_GROUP) {
         setTimeout(() => {
             dialog.groupElement.focus();
             dialog.groupElement.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -425,11 +448,14 @@ function prevent_invalid_input(element) {
     });
 }
 
-async function save_slot(name, values) {
-    await api.fetchApi("/wilddivide/add_slot", {
+async function edit_group(name, new_name) {
+    await api.fetchApi("/wilddivide/edit_group", {
         method: "POST",
-        body: JSON.stringify({ name, values }),
-    });
+        body: JSON.stringify({
+            name: dialog.org_name,
+            new_name: new_name
+        }),
+    })
     await refresh_wildcards();
 }
 
@@ -441,6 +467,14 @@ async function delete_group(name) {
         });
         await refresh_wildcards();
     }
+}
+
+async function save_slot(name, values) {
+    await api.fetchApi("/wilddivide/add_slot", {
+        method: "POST",
+        body: JSON.stringify({ name, values }),
+    });
+    await refresh_wildcards();
 }
 
 async function delete_slot(name) {

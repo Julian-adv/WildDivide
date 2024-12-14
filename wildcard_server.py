@@ -57,6 +57,12 @@ async def reorder_group_handler(request):
     wildcards.reorder_group(data["from_group"], data["to_group"], data["position"])
     return web.json_response({"status": "success"})
 
+@PromptServer.instance.routes.post("/wilddivide/edit_group")
+async def edit_group_handler(request):
+    data = await request.json()
+    wildcards.edit_group(data["name"], data["new_name"])
+    return web.json_response({"status": "success"})
+
 @PromptServer.instance.routes.post("/wilddivide/move_slot")
 async def move_slot_handler(request):
     data = await request.json()
