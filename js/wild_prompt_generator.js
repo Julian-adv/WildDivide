@@ -488,6 +488,8 @@ function add_group_widget(node, widgetName, visible) {
     group_name = widgetName;
 }
 
+let auto_complete = true;
+
 function add_buttons_widget(node) {
     const container = document.createElement("div");
     Object.assign(container.style, {
@@ -542,6 +544,7 @@ function add_buttons_widget(node) {
             text: "Auto template",
             onClick: () => {
                 auto_template_checkbox.checked = !auto_template_checkbox.checked;
+                auto_complete = auto_template_checkbox.checked;
             },
             onInit: (button) => {
                 // Style button as flex container
@@ -555,7 +558,7 @@ function add_buttons_widget(node) {
                 // Create checkbox
                 auto_template_checkbox = document.createElement("input");
                 auto_template_checkbox.type = "checkbox";
-                auto_template_checkbox.checked = true;
+                auto_template_checkbox.checked = auto_complete;
                 Object.assign(auto_template_checkbox.style, {
                     margin: "0",
                     cursor: "pointer",
@@ -564,6 +567,7 @@ function add_buttons_widget(node) {
                 // Prevent checkbox from triggering button click
                 auto_template_checkbox.addEventListener("click", (e) => {
                     e.stopPropagation();
+                    auto_complete = auto_template_checkbox.checked;
                 });
                 
                 // Add checkbox to button

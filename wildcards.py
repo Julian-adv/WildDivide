@@ -472,18 +472,15 @@ def delete_slot(name):
 
 # move from_key before to_key
 def reorder_slot(from_key, to_key):
-    local_wildcard_dict = get_wildcard_dict()
-    keys = list(local_wildcard_dict.keys())
-    from_key = f"m/{from_key}"
-    to_key = f"m/{to_key}"
-    if from_key in keys and to_key in keys:
-        from_index = keys.index(from_key)
-        keys.pop(from_index)
-        to_index = keys.index(to_key)
-        keys.insert(to_index, from_key)
-        reordered_dict = {k: local_wildcard_dict[k] for k in keys}
-        set_wildcard_dict(reordered_dict)
-        save_wildcard_dict(reordered_dict)
+    global wildcard_dict
+    new_dict = {}
+    for k, v in wildcard_dict.items():
+        if k == to_key:
+            new_dict[from_key] = wildcard_dict[from_key]
+        if k != from_key:
+            new_dict[k] = v
+    wildcard_dict = new_dict
+    save_wildcard_dict(new_dict)
 
 def move_slot(from_key, to_key, is_target_group=False, is_copy=False, force=False):
     """Move or copy a slot from one group to another or to/from root"""
@@ -497,6 +494,12 @@ def move_slot(from_key, to_key, is_target_group=False, is_copy=False, force=Fals
         # Get target group and slot name
         from_name = from_key.split('/')[-1]
         to_group = to_key if is_target_group else remove_last_key(to_key)
+        from_group = remove_last_key(from_key)
+
+        if from_group == to_group:
+            # Same group, just reorder
+            reorder_slot(from_key, to_key)
+            return
         
         # Create new key
         new_key = f"{to_group}/{from_name}"
