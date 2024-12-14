@@ -51,6 +51,26 @@ async def reorder_slot(request):
     wildcards.reorder_slot(data["from"], data["to"])
     return web.json_response({"status": "success"})
 
+@PromptServer.instance.routes.post("/wilddivide/reorder_group")
+async def reorder_group_handler(request):
+    data = await request.json()
+    wildcards.reorder_group(data["from_group"], data["to_group"], data["position"])
+    return web.json_response({"status": "success"})
+
+@PromptServer.instance.routes.post("/wilddivide/move_slot")
+async def move_slot_handler(request):
+    data = await request.json()
+    result = wildcards.move_slot(
+        data["from"], 
+        data["to"], 
+        data.get("isTargetGroup", False), 
+        data.get("isCopy", False),
+        data.get("force", False)
+    )
+    if result and result.get("status") == "conflict":
+        return web.json_response(result)
+    return web.json_response({"status": "success"})
+
 @PromptServer.instance.routes.get("/wilddivide/last_generated")
 async def last_generated(request):
     data = {"data": wild_prompt_generator.get_last_generated()}

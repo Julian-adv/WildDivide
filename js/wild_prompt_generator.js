@@ -135,6 +135,7 @@ let fromKey = null;
 let group_name = null;
 let show_tooltips_checkbox = null;
 let auto_template_checkbox = null;
+let isCtrlDrag = false;
 
 function close_context_menu(node) {
     if (node.context_menu) {
@@ -436,7 +437,7 @@ function values_for_key(widget_name) {
 
 function add_group_widget(node, widgetName, visible) {
     // Container
-    const container = create_draggable_container(widgetName, node);
+    const container = create_draggable_container(widgetName, node, true);
 
     // Label
     const label = document.createElement("label");
@@ -445,6 +446,7 @@ function add_group_widget(node, widgetName, visible) {
         flex: "1 1 auto",
         width: "150px",
         alignSelf: "center",
+        cursor: "move",
     });
     label.textContent = widgetName;
     
@@ -613,6 +615,9 @@ function add_buttons_widget(node) {
         getValue() {
             return auto_template_checkbox.checked;
         },
+        setValue(value) {
+            auto_template_checkbox.checked = value;
+        },
         onDraw(w) {
             Object.assign(w.element.style, {
                 display: "flex",
@@ -677,9 +682,7 @@ function add_version_widget(node) {
     container.append(version);
 
     api.fetchApi("/wilddivide/version").then(async (res) => {
-        console.log(res);
         let data = await res.json();
-        console.log(data);
         version.textContent = "v" + data.version;
     })
 
@@ -697,7 +700,7 @@ function add_version_widget(node) {
     };
 }
 
-function create_draggable_container(widgetName, node) {
+function create_draggable_container(widgetName, node, isGroup = false) {
     // Create widget container
     const container = document.createElement("div");
     Object.assign(container.style, {
@@ -710,36 +713,106 @@ function create_draggable_container(widgetName, node) {
         paddingRight: "10px",
     });
     container.draggable = true;
+    container.classList.add('widget-container');
+    if (isGroup) {
+        container.classList.add('group-widget-container');
+    }
     container.addEventListener("dragstart", (e) => {
         e.target.style.opacity = "0.4";
         fromKey = widgetName;
+        e.dataTransfer.setData('isGroup', isGroup);
+        isCtrlDrag = e.ctrlKey;
+        updateDropEffect(e);
     });
     container.addEventListener("dragend", (e) => {
         e.target.style.opacity = "1";
+        isCtrlDrag = false;
     });
+    
+    // Update drop effect based on ctrl key state
+    function updateDropEffect(e) {
+        isCtrlDrag = e.ctrlKey;
+        e.dataTransfer.dropEffect = isCtrlDrag ? 'copy' : 'move';
+    }
+    
     container.addEventListener("dragover", (e) => {
         e.preventDefault();
+        updateDropEffect(e);
     });
     container.addEventListener("drop", async (e) => {
         e.preventDefault();
-        const toKey = e.target.tagName === "LABEL" ? e.target.textContent : e.target.closest('.widget-container').querySelector('label').textContent;
-        const from_group = remove_last_key(fromKey);
-        const to_group = remove_last_key(toKey);
-        if (from_group !== to_group) {
-            await copy_slot(fromKey, toKey);
-            return;
+        const targetElement = e.target.tagName === "LABEL" ? e.target : e.target.closest('.widget-container').querySelector('label');
+        if (!targetElement) return;
+        
+        const toKey = targetElement.textContent;
+        const isGroupDrag = e.dataTransfer.getData('isGroup') === 'true';
+        const targetContainer = targetElement.closest('.widget-container');
+        const isTargetGroup = targetContainer?.classList.contains('group-widget-container') ?? false;
+
+        // If dragging a group widget
+        if (isGroupDrag) {
+            const draggedGroupName = fromKey;
+            const targetGroupName = remove_last_key(toKey);
+
+            if (isTargetGroup) {
+                // Case 1: Dropping onto another group
+                // Move all slots before the target group
+                await api.fetchApi("/wilddivide/reorder_group", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        from_group: draggedGroupName,
+                        to_group: targetGroupName,
+                        position: "before"
+                    }),
+                });
+            } else {
+                // Case 2: Dropping onto a non-group slot
+                // Move all slots to the end of non-group slots
+                await api.fetchApi("/wilddivide/reorder_group", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        from_group: draggedGroupName,
+                        to_group: null,
+                        position: "end"
+                    }),
+                });
+            }
+        } else {
+
+            // Single slot movement logic
+            const initialCtrlState = isCtrlDrag;
+            const response = await api.fetchApi("/wilddivide/move_slot", {
+                method: "POST",
+                body: JSON.stringify({
+                    from: fromKey,
+                    to: toKey,
+                    isTargetGroup: isTargetGroup,
+                    isCopy: initialCtrlState  // Use initial state instead of current state
+                }),
+            });
+            
+            const result = await response.json();
+            if (result.status === "conflict") {
+                if (!confirm(`A slot with the name "${result.key}" already exists at the target location. Do you want to overwrite it?`)) {
+                    return;
+                }
+                // Try again with force flag
+                await api.fetchApi("/wilddivide/move_slot", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        from: fromKey,
+                        to: toKey,
+                        isTargetGroup: isTargetGroup,
+                        isCopy: initialCtrlState,  // Use initial state here too
+                        force: true
+                    }),
+                });
+            }
         }
-        await api.fetchApi("/wilddivide/reorder_slot", {
-            method: "POST",
-            body: JSON.stringify({
-                from: fromKey,
-                to: toKey,
-            }),
-        });
+        
         await refresh_wildcards();
         fromKey = null;
     });
-    container.classList.add('widget-container');
     container.addEventListener("wheel", (e) => {
         scroll_widgets(e, node);
     });

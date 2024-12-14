@@ -51,14 +51,14 @@ class WildPromptGenerator:
         for k in kwargs:
             if kwargs[k] == "disabled" or k == "seed" or k == "auto_template" or k == "template":
                 continue
-            if kwargs[k] == "random":
-                template += f"__m/{k}__, "
-                continue
             if "/" in k:
                 group = k.split("/")[0]
                 if group != prev_group:
                     prev_group = group
-                    template += "BREAK "
+                    template += "[SEP] "
+            if kwargs[k] == "random":
+                template += f"__m/{k}__, "
+                continue
             template += f"{kwargs[k]}, "
         return template
 

@@ -464,6 +464,62 @@ def reorder_slot(from_key, to_key):
         set_wildcard_dict(reordered_dict)
         save_wildcard_dict(reordered_dict)
 
+def move_slot(from_key, to_key, is_target_group=False, is_copy=False, force=False):
+    """Move or copy a slot from one group to another or to/from root"""
+    global wildcard_dict
+    with wildcard_lock:
+        from_key = f"m/{from_key}"
+        to_key = f"m/{to_key}"
+        if from_key not in wildcard_dict:
+            return
+        
+        # Get target group and slot name
+        from_name = from_key.split('/')[-1]
+        to_group = to_key if is_target_group else remove_last_key(to_key)
+        
+        # Create new key
+        new_key = f"{to_group}/{from_name}"
+        
+        # Check if the target key already exists
+        if not force and new_key in wildcard_dict:
+            return {"status": "conflict", "key": new_key.replace("m/", "")}
+        
+        # Get the slot value
+        slot_value = wildcard_dict[from_key]
+        
+        # Remove from the original location if not copying
+        if not is_copy:
+            del wildcard_dict[from_key]
+        
+        # Add to the new location
+        new_dict = {}
+        if is_target_group:
+            # If target is a group widget, find the first slot of that group
+            group_slots = [(k, v) for k, v in wildcard_dict.items() if k.startswith(f"{to_group}/")]
+            if group_slots:
+                first_slot = group_slots[0][0]
+                # Add before the first slot of the group
+                for k, v in wildcard_dict.items():
+                    if k == first_slot:
+                        new_dict[new_key] = slot_value
+                    new_dict[k] = v
+            else:
+                # If group is empty, just add the slot
+                new_dict[new_key] = slot_value
+                new_dict.update(wildcard_dict)
+        else:
+            # Normal slot movement - add after the target slot
+            for k, v in wildcard_dict.items():
+                if k == to_key:
+                    new_dict[new_key] = slot_value
+                    if new_key != k:
+                        new_dict[k] = v
+                else:
+                    new_dict[k] = v
+                    
+        wildcard_dict = new_dict
+        save_wildcard_dict(wildcard_dict)
+
 def save_wildcard_dict(wildcard_dict):
     m_wildcard_dict = {k: v for k, v in wildcard_dict.items() if k.startswith("m/")}
     m_wildcard_dict_new = {}
@@ -487,7 +543,54 @@ def save_wildcard_dict(wildcard_dict):
     with open(WILDCARD_DICT_FILE, "w") as f:
         yaml.dump(m_wildcard_dict_new, f, encoding="utf-8", allow_unicode=True, sort_keys=False)
 
-# convert all entries after the entry which has GROUP first value to children of the entry
+# move all slots in from_group to specified position
+def reorder_group(from_group, to_group, position):
+    global wildcard_dict
+    with wildcard_lock:
+        # Get all slots in the source group
+        from_slots = [(k, v) for k, v in wildcard_dict.items() if k.startswith("m/" + from_group + "/")]
+        
+        # If no slots found in the source group, return
+        if not from_slots:
+            return
+
+        # Remove all slots from the source group
+        for k, _ in from_slots:
+            del wildcard_dict[k]
+
+        if position == "end" or to_group is None:
+            # Find the last non-group slot (slots directly under 'm' directory)
+            non_group_slots = [(k, v) for k, v in wildcard_dict.items() if k.startswith('m/') and len(k.split('/')) == 2]
+            if non_group_slots:
+                last_slot = non_group_slots[-1][0]
+                # Add slots after the last non-group slot
+                new_dict = {}
+                for k, v in wildcard_dict.items():
+                    new_dict[k] = v
+                    if k == last_slot:
+                        for from_k, from_v in from_slots:
+                            new_dict[from_k] = from_v
+                wildcard_dict = new_dict
+            else:
+                # If no non-group slots, add at the beginning
+                for from_k, from_v in reversed(from_slots):
+                    wildcard_dict = {from_k: from_v, **wildcard_dict}
+        else:  # position == "before" and to_group is not None
+            # Find all slots in the target group
+            to_slots = [(k, v) for k, v in wildcard_dict.items() if k.startswith("m/" + to_group + "/")]
+            if to_slots:
+                # Add slots before the first slot of the target group
+                first_slot = to_slots[0][0]
+                new_dict = {}
+                for k, v in wildcard_dict.items():
+                    if k == first_slot:
+                        for from_k, from_v in from_slots:
+                            new_dict[from_k] = from_v
+                    new_dict[k] = v
+                wildcard_dict = new_dict
+
+        save_wildcard_dict(wildcard_dict)
+
 def convert_group_to_dict(wildcard_dict):
     group_name = None
     group_dict = {}

@@ -628,6 +628,6 @@ function get_values_array(group, key) {
     });
 }
 
-function join_group_key(group, key) {
+export function join_group_key(group, key) {
     return group == "" ? key : `${group}/${key}`;
 }
