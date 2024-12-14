@@ -8,7 +8,7 @@ class WildPromptGenerator:
         return {
             "required": {
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xFFFFFFFFFFFFFFFF}),
-                "auto_template": ("BOOLEAN", {"default": False}),
+                "auto_template": ("BOOLEAN",),
             },
             "optional": cls.get_menu_list()
         }
