@@ -4,7 +4,7 @@ import { update_last_generated } from "./wild_prompt_tooltip.js";
 import { update_context_menu } from "./wild_prompt_generator.js";
 
 let addDialog = null;
-let editDialog = null;
+let edit_dialog = null;
 let add_group_dialog = null;
 let edit_group_dialog = null;
 
@@ -23,15 +23,16 @@ export function show_add_dialog(group_name, node) {
 }
 
 export function show_edit_dialog(widgetName, node) {
-    if (!editDialog) {
-        editDialog = setup_dialog(DialogType.EDIT, node, widgetName);
+    if (!edit_dialog) {
+        edit_dialog = setup_dialog(DialogType.EDIT, node, widgetName);
     }
     let groupName = "";
     if (widgetName.includes("/")) {
         [groupName, widgetName] = widgetName.split("/");
     }
 
-    show_dialog(editDialog, `Edit Slot: ${widgetName}`, groupName, widgetName);
+    edit_dialog.org_name = widgetName;
+    show_dialog(edit_dialog, `Edit Slot: ${widgetName}`, groupName, widgetName);
 }
 
 export function show_edit_group_dialog(groupName, node) {
@@ -78,6 +79,12 @@ function setup_dialog(dialogType, node, widget_name) {
             } else if (wildcards_dict[`m/${key}`] && dialog.type !== DialogType.EDIT) {
                 alert_message(dialog, "Slot already exists");
             } else {
+                if (dialog.type === DialogType.EDIT && dialog.org_name !== key_from_dialog(dialog)) {
+                    await api.fetchApi("/wilddivide/rename_slot", {
+                        method: "POST",
+                        body: JSON.stringify({ name: dialog.org_name, new_name: key }),
+                    });
+                }
                 await save_slot(key, values);
                 dialog.close();
                 setTimeout(() => {
@@ -253,7 +260,6 @@ function show_dialog(dialog, title, groupName, widgetName) {
             padding: "3px 5px",
             border: "1px solid var(--p-form-field-border-color)",
         });
-        dialog.slotElement.disabled = (dialog.type === DialogType.EDIT);
         if (dialog.type === DialogType.EDIT) {
             dialog.slotElement.value = widgetName;
         } else {

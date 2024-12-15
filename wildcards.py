@@ -424,6 +424,26 @@ def add_slot(name, values):
         local_wildcard_dict[slot_name] = values
         save_wildcard_dict(local_wildcard_dict)
 
+def rename_slot(name, new_name):
+    global wildcard_dict
+    with wildcard_lock:
+        name = name.strip()
+        new_name = new_name.strip()
+        if name == "" or new_name == "":
+            return
+        name = wildcard_normalize(name)
+        new_name = wildcard_normalize(new_name)
+        name = f"m/{name}"
+        new_name = f"m/{new_name}"
+        new_dict = {}
+        for k, v in wildcard_dict.items():
+            if k == name:
+                new_dict[new_name] = v
+            else:
+                new_dict[k] = v
+        wildcard_dict = new_dict
+        save_wildcard_dict(new_dict)
+
 def remove_last_key(key):
     return '/'.join(key.split('/')[:-1])
 

@@ -33,6 +33,12 @@ async def add_slot(request):
     wildcards.add_slot(data["name"], data["values"])
     return web.json_response({"status": "success"})
 
+@PromptServer.instance.routes.post("/wilddivide/rename_slot")
+async def rename_slot(request):
+    data = await request.json()
+    wildcards.rename_slot(data["name"], data["new_name"])
+    return web.json_response({"status": "success"})
+
 @PromptServer.instance.routes.post("/wilddivide/delete_group")
 async def delete_group(request):
     data = await request.json()
