@@ -161,7 +161,8 @@ export function setup_node(node, new_wildcards_dict) {
     }
     node.widgets.splice(2);
     let [width, height] = node.size;
-    group_name = null;
+
+    add_group_widget(node, "", true);
     for (const key of filtered_keys) {
         const slotName = key.substring(2); // Remove "m/" prefix
         const group_node = slotName.includes("/");
@@ -448,9 +449,28 @@ function add_group_widget(node, widgetName, visible) {
         alignSelf: "center",
         cursor: "move",
     });
-    label.textContent = widgetName;
+    label.textContent = widgetName === ""  ? "overall" : widgetName;
     
-    // Settings button
+    // All disabled button
+    const all_disabled_button = document.createElement("button");
+    Object.assign(all_disabled_button.style, {
+        backgroundColor: "transparent",
+        border: "1px solid var(--border-color)",
+        borderRadius: "4px",
+        fontSize: "12px",
+        cursor: "pointer",
+    });
+    all_disabled_button.textContent = "All disabled";
+    all_disabled_button.onclick = () => {
+        for (const widget of node.widgets) {
+            if (widgetName === "" && !widget.name.includes("/") && widget.type === "mycombo" ||
+                widgetName !== "" && widget.name.startsWith(widgetName)) {
+                widget.value = "disabled";
+            }
+        }
+    }
+
+    // Edit button
     const button = document.createElement("button");
     Object.assign(button.style, {
         backgroundColor: "transparent",
@@ -465,7 +485,7 @@ function add_group_widget(node, widgetName, visible) {
     button.onclick = () => {
         show_edit_group_dialog(widgetName, node);
     };
-    container.append(label, button);
+    container.append(label, all_disabled_button, button);
 
     const widget = node.addDOMWidget(widgetName, visible ? 'mygroup' : 'hidden', container, {
         getValue() {
