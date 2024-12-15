@@ -519,9 +519,8 @@ def move_slot(from_key, to_key, is_target_group=False, is_copy=False, force=Fals
         new_dict = {}
         if is_target_group:
             # If target is a group widget, find the first slot of that group
-            group_slots = [(k, v) for k, v in wildcard_dict.items() if k.startswith(f"{to_group}/")]
-            if group_slots:
-                first_slot = group_slots[0][0]
+            first_slot = next((k for k, v in wildcard_dict.items() if k.startswith(f"{to_group}/")), None)
+            if first_slot is not None:
                 # Add before the first slot of the group
                 for k, v in wildcard_dict.items():
                     if k == first_slot:
