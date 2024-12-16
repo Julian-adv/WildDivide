@@ -3,7 +3,7 @@ import { api } from "../../scripts/api.js";
 import { get_tooltips_shown, show_last_generated, update_last_generated,
          set_tooltip_position_all, clear_tooltips } from "./wild_prompt_tooltip.js";
 import { show_add_dialog, show_edit_dialog, show_add_group_dialog, show_edit_group_dialog, join_group_key } from "./wild_prompt_dialog.js";
-import { set_generator_node, refresh_wildcards, load_wildcards, get_wildcards_dict, levenshtein_distance } from "./wild_prompt_common.js";
+import { set_generator_node, refresh_wildcards, load_wildcards, get_wildcards_dict, find_similar_value } from "./wild_prompt_common.js";
 
 let wildcards_dict = await load_wildcards();
 
@@ -167,7 +167,7 @@ export function setup_node(node, new_wildcards_dict) {
         const slotName = key.substring(2); // Remove "m/" prefix
         const group_node = slotName.includes("/");
         const values = values_for_key(slotName);
-        const value = find_similar_value(old_values, values, slotName);
+        const value = find_similar_value(old_values[slotName], values);
         if (group_node) {
             check_group_name(node, slotName, value, values, true);
         } else {
@@ -222,36 +222,6 @@ function setup_node_hidden(node) {
     node.total_height = y;
     node.visible_height = end_y - start_y;
     node.start_y = start_y;
-}
-
-function find_similar_value(old_values, current_values, slotName) {
-    let value = old_values[slotName];
-    if (value == null || value == undefined) {
-        return "random";
-    } else if (current_values.includes(value)) {
-        return value;
-    } else {
-        // Try to find the most similar value using Levenshtein distance
-        let bestMatch = null;
-        let minDistance = Infinity;
-        const valueNormalized = value.toLowerCase();
-        
-        for (const similar_value of current_values) {
-            const similarNormalized = similar_value.toLowerCase();
-            
-            // Calculate Levenshtein distance
-            const distance = levenshtein_distance(valueNormalized, similarNormalized);
-            const maxLength = Math.max(value.length, similar_value.length);
-            const similarity = 1 - (distance / maxLength);  // Normalize by length
-            
-            if (similarity > 0.3 && distance < minDistance) {  // 70% similarity threshold
-                minDistance = distance;
-                bestMatch = similar_value;
-            }
-        }
-        
-        return bestMatch || "random";
-    }
 }
 
 function check_group_name(node, widgetName, value, values, visible) {

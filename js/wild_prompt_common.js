@@ -39,8 +39,37 @@ export async function refresh_wildcards() {
     }
 }
 
+export function find_similar_value(value, values) {
+    if (value == null || value == undefined) {
+        return "random";
+    } else if (values.includes(value)) {
+        return value;
+    } else {
+        // Try to find the most similar value using Levenshtein distance
+        let bestMatch = null;
+        let minDistance = Infinity;
+        const valueNormalized = value.toLowerCase();
+        
+        for (const similar_value of values) {
+            const similarNormalized = similar_value.toLowerCase();
+            
+            // Calculate Levenshtein distance
+            const distance = levenshtein_distance(valueNormalized, similarNormalized);
+            const maxLength = Math.max(value.length, similar_value.length);
+            const similarity = 1 - (distance / maxLength);  // Normalize by length
+            
+            if (similarity > 0.3 && distance < minDistance) {  // 70% similarity threshold
+                minDistance = distance;
+                bestMatch = similar_value;
+            }
+        }
+        
+        return bestMatch || "random";
+    }
+}
+
 // Calculate Levenshtein distance between two strings
-export function levenshtein_distance(str1, str2) {
+function levenshtein_distance(str1, str2) {
     const m = str1.length;
     const n = str2.length;
     if (m === 0) return n;
