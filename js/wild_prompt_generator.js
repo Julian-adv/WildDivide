@@ -315,40 +315,8 @@ function add_combo_widget(node, widgetName, value, visible) {
 
     // Add tooltip functionality
     select_elem.addEventListener("mouseover", (e) => {
-        if (select_elem.textContent && 
-            (select_elem.offsetWidth < select_elem.scrollWidth || 
-             select_elem.offsetHeight < select_elem.scrollHeight)) {
-            
-            if (!select_elem.tooltip) {
-                let tooltip = document.createElement("div");
-                tooltip.className = "tooltip";
-                tooltip.style.display = "none";
-                tooltip.style.position = "fixed";
-                tooltip.style.backgroundColor = "var(--bg-color)";
-                tooltip.style.border = "1px solid var(--border-color)";
-                tooltip.style.padding = "4px";
-                tooltip.style.borderRadius = "4px";
-                tooltip.style.fontSize = "12px";
-                tooltip.style.zIndex = "10000";
-                document.body.appendChild(tooltip);
-
-                tooltip.addEventListener("mouseout", () => {
-                    tooltip.style.display = "none";
-                });
-
-                tooltip.addEventListener("click", (e) => {
-                    e.stopPropagation();
-                    tooltip.style.display = "none";
-                    select_elem.click();
-                });
-
-                tooltip.textContent = select_elem.textContent;
-                const rect = select_elem.getBoundingClientRect();
-                tooltip.style.left = (rect.left - 5) + "px";
-                tooltip.style.top = (rect.top - 5) + "px";
-                select_elem.tooltip = tooltip;
-            }
-            select_elem.tooltip.style.display = "block";
+        if (is_text_overflowing(select_elem)) {
+            create_overflow_tooltip(select_elem);
         }
     });
 
@@ -914,4 +882,43 @@ function split_group_key(key) {
         return key.split('/');
     }
     return ["", key];
+}
+
+function is_text_overflowing(elem) {
+    return elem.textContent && 
+           (elem.offsetWidth < elem.scrollWidth || 
+            elem.offsetHeight < elem.scrollHeight);
+}
+
+function create_overflow_tooltip(select_elem) {
+    if (!select_elem.tooltip) {
+        let tooltip = document.createElement("div");
+        tooltip.className = "tooltip";
+        tooltip.style.display = "none";
+        tooltip.style.position = "fixed";
+        tooltip.style.backgroundColor = "var(--bg-color)";
+        tooltip.style.border = "1px solid var(--border-color)";
+        tooltip.style.padding = "4px";
+        tooltip.style.borderRadius = "4px";
+        tooltip.style.fontSize = "12px";
+        tooltip.style.zIndex = "10000";
+        document.body.appendChild(tooltip);
+
+        tooltip.addEventListener("mouseout", () => {
+            tooltip.style.display = "none";
+        });
+
+        tooltip.addEventListener("click", (e) => {
+            e.stopPropagation();
+            tooltip.style.display = "none";
+            select_elem.click();
+        });
+
+        tooltip.textContent = select_elem.textContent;
+        const rect = select_elem.getBoundingClientRect();
+        tooltip.style.left = (rect.left - 5) + "px";
+        tooltip.style.top = (rect.top - 5) + "px";
+        select_elem.tooltip = tooltip;
+    }
+    select_elem.tooltip.style.display = "block";
 }
