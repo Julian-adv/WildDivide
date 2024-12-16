@@ -80,6 +80,7 @@ function create_tooltip(widget) {
     tooltip.onclick = (e) => {
         e.stopPropagation();
         tooltip.style.display = "none";
+        widget.select_elem.click();
     };
     // Show full tooltip when hovered
     tooltip.onmouseover = (e) => {
