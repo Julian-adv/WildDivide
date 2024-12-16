@@ -224,6 +224,33 @@ function setup_node_hidden(node) {
     node.start_y = start_y;
 }
 
+// Calculate Levenshtein distance between two strings
+function levenshteinDistance(str1, str2) {
+    const m = str1.length;
+    const n = str2.length;
+    if (m === 0) return n;
+    if (n === 0) return m;
+    const dp = Array(m + 1).fill().map(() => Array(n + 1).fill(0));
+
+    for (let i = 0; i <= m; i++) dp[i][0] = i;
+    for (let j = 0; j <= n; j++) dp[0][j] = j;
+
+    for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+            if (str1[i - 1] === str2[j - 1]) {
+                dp[i][j] = dp[i - 1][j - 1];
+            } else {
+                dp[i][j] = 1 + Math.min(
+                    dp[i - 1][j],     // deletion
+                    dp[i][j - 1],     // insertion
+                    dp[i - 1][j - 1]  // substitution
+                );
+            }
+        }
+    }
+    return dp[m][n];
+}
+
 function find_similar_value(old_values, current_values, slotName) {
     let value = old_values[slotName];
     if (value == null || value == undefined) {
@@ -231,14 +258,26 @@ function find_similar_value(old_values, current_values, slotName) {
     } else if (current_values.includes(value)) {
         return value;
     } else {
-        // Try similar value
+        // Try to find the most similar value using Levenshtein distance
+        let bestMatch = null;
+        let minDistance = Infinity;
+        const valueNormalized = value.toLowerCase();
+        
         for (const similar_value of current_values) {
-            if (similar_value.toLowerCase().includes(value.toLowerCase()) ||
-                value.toLowerCase().includes(similar_value.toLowerCase())) {
-                return similar_value;
+            const similarNormalized = similar_value.toLowerCase();
+            
+            // Calculate Levenshtein distance
+            const distance = levenshteinDistance(valueNormalized, similarNormalized);
+            const maxLength = Math.max(value.length, similar_value.length);
+            const similarity = 1 - (distance / maxLength);  // Normalize by length
+            
+            if (similarity > 0.3 && distance < minDistance) {  // 70% similarity threshold
+                minDistance = distance;
+                bestMatch = similar_value;
             }
         }
-        return "random";
+        
+        return bestMatch || "random";
     }
 }
 
