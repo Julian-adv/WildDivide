@@ -302,16 +302,35 @@ function show_dialog(dialog, title, groupName, widgetName) {
         });
         filterLabel.textContent = "Filter";
 
+        const filter_container = document.createElement("div");
+        Object.assign(filter_container.style, {
+            display: "flex",
+            gap: "2px",
+            width: "100%",
+        });
+
         dialog.filterElement = document.createElement("input");
         Object.assign(dialog.filterElement.style, {
-            width: "auto",
             margin: "0",
             padding: "3px 5px",
             border: "1px solid var(--p-form-field-border-color)",
+            flex: "1 1 auto",
         });
         dialog.filterElement.value = "";
         dialog.filterElement.disabled = (dialog.type !== DialogType.EDIT);
         dialog.filterElement.placeholder = "Filter values...";
+
+        // Filter counter
+        dialog.filter_counter = document.createElement("span");
+        Object.assign(dialog.filter_counter.style, {
+            fontSize: "12px",
+            color: "var(--p-form-field-float-label-color)",
+            alignSelf: "center",
+            flex: "0 0 auto",
+            whiteSpace: "nowrap",
+        });
+
+        filter_container.append(dialog.filterElement, dialog.filter_counter);
 
         const clear_filter_button = document.createElement("button");
         Object.assign(clear_filter_button.style, {
@@ -333,6 +352,7 @@ function show_dialog(dialog, title, groupName, widgetName) {
 
         dialog.filterElement.addEventListener("input", () => {
             const filterText = dialog.filterElement.value.toLowerCase();
+            let counter = 0;
             dialog.valueElements.forEach((valueElement, index) => {
                 const conditionElement = dialog.conditionElements[index];
                 const value = valueElement.value;
@@ -340,15 +360,18 @@ function show_dialog(dialog, title, groupName, widgetName) {
 
                 if (filterText && value.toLowerCase().includes(filterText)) {
                     valueElement.style.background = "rgba(255, 0, 0, 0.2)";
+                    counter++;
                 } else {
                     valueElement.style.background = "var(--comfy-input-bg)";
                 }
                 if (filterText && condition.toLowerCase().includes(filterText)) {
                     conditionElement.style.background = "rgba(255, 0, 0, 0.2)";
+                    counter++;
                 } else {
                     conditionElement.style.background = "var(--comfy-input-bg)";
                 }
             });
+            dialog.filter_counter.textContent = `${counter} / ${dialog.valueElements.length}`;
         });
 
         dialog.filterElement.addEventListener("change", () => {
@@ -361,7 +384,7 @@ function show_dialog(dialog, title, groupName, widgetName) {
             }
         });
 
-        header.append(filterLabel, dialog.filterElement, clear_filter_button);
+        header.append(filterLabel, filter_container, clear_filter_button);
     }
     container.append(header);
 
@@ -402,6 +425,8 @@ function show_dialog(dialog, title, groupName, widgetName) {
             add_new_value(dialog, "-", condition, value, marker);
         });
         container.append(value_container);
+
+        dialog.filter_counter.textContent = `0 / ${dialog.valueElements.length}`;
     }
 
     dialog.show(title);
