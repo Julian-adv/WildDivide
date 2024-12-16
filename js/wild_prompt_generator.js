@@ -915,10 +915,10 @@ function create_overflow_tooltip(select_elem) {
         });
 
         tooltip.textContent = select_elem.textContent;
-        const rect = select_elem.getBoundingClientRect();
-        tooltip.style.left = (rect.left - 5) + "px";
-        tooltip.style.top = (rect.top - 5) + "px";
         select_elem.tooltip = tooltip;
     }
+    const rect = select_elem.getBoundingClientRect();
+    select_elem.tooltip.style.left = (rect.left - 5) + "px";
+    select_elem.tooltip.style.top = (rect.top - 5) + "px";
     select_elem.tooltip.style.display = "block";
 }
