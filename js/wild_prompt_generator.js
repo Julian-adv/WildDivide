@@ -169,9 +169,9 @@ export function setup_node(node, new_wildcards_dict) {
         const values = values_for_key(slotName);
         const value = find_similar_value(old_values[slotName], values);
         if (group_node) {
-            check_group_name(node, slotName, value, values, true);
+            check_group_name(node, slotName, value, true);
         } else {
-            add_combo_widget(node, slotName, value, values, true);
+            add_combo_widget(node, slotName, value, true);
         }
     }
     add_buttons_widget(node);
@@ -224,16 +224,16 @@ function setup_node_hidden(node) {
     node.start_y = start_y;
 }
 
-function check_group_name(node, widgetName, value, values, visible) {
+function check_group_name(node, widgetName, value, visible) {
     const [new_group_name, widget_name] = widgetName.split("/");
     if (new_group_name != group_name) {
         group_name = new_group_name;
         add_group_widget(node, group_name, visible);
     }
-    add_combo_widget(node, widgetName, value, values, visible);
+    add_combo_widget(node, widgetName, value, visible);
 }
 
-function add_combo_widget(node, widgetName, value, values, visible) {
+function add_combo_widget(node, widgetName, value, visible) {
     const container = create_draggable_container(widgetName, node);
 
     // Create combo
