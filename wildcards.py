@@ -391,38 +391,47 @@ def process(text, seed=None, kwargs=None):
     return text, last_generated
 
 def add_slot(name, values):
-    local_wildcard_dict = get_wildcard_dict()
-    slot_name = name.strip()
-    if slot_name == "":
+    if not name or not name.strip():
         return
-    slot_name = wildcard_normalize(slot_name)
-    slot_name = f"m/{slot_name}"
-    values = values.removeprefix("- ").split("\n- ")
 
-    # find proper position
-    index = -1
-    keys = list(local_wildcard_dict.keys())
-    group_name = remove_last_key(slot_name) + '/'
-    if '/' in name:
-        for i in range(len(keys)-1, -1, -1):
-            if keys[i].startswith(group_name):
-                index = i
-                break
-    else:
-        for i in range(len(keys)-1, -1, -1):
-            if keys[i].startswith(group_name) and keys[i].count('/') == 1:
-                index = i
-                break
+    global wildcard_dict
+    with wildcard_lock:
+        slot_name = f"m/{wildcard_normalize(name.strip())}"
+        values = [v.strip() for v in values.removeprefix("- ").split("\n- ")]
 
-    if index != -1:
-        keys.insert(index + 1, slot_name)
-        local_wildcard_dict[slot_name] = values
-        new_dict = {k: local_wildcard_dict[k] for k in keys}
-        set_wildcard_dict(new_dict)
+        # If slot already exists, just update values
+        if slot_name in wildcard_dict:
+            wildcard_dict[slot_name] = values
+            save_wildcard_dict(wildcard_dict)
+            return
+
+        # Get group name (everything before the last '/')
+        group_name = remove_last_key(slot_name)
+        
+        new_dict = {}
+        last_group_key = None
+        
+        # Find the last key of the target group
+        for k in wildcard_dict.keys():
+            curr_group = remove_last_key(k)
+            if curr_group == group_name:
+                last_group_key = k
+            elif group_name == "m" and curr_group == "m" and "/" not in k[2:]:
+                # For root level slots
+                last_group_key = k
+
+        # Add slots in the correct order
+        for k, v in wildcard_dict.items():
+            new_dict[k] = v
+            if k == last_group_key:
+                new_dict[slot_name] = values
+
+        # If we haven't added the new slot yet (no matching group found)
+        if slot_name not in new_dict:
+            new_dict[slot_name] = values
+
+        wildcard_dict = new_dict
         save_wildcard_dict(new_dict)
-    else:
-        local_wildcard_dict[slot_name] = values
-        save_wildcard_dict(local_wildcard_dict)
 
 def rename_slot(name, new_name):
     global wildcard_dict
