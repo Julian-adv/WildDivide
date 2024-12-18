@@ -358,17 +358,28 @@ function show_dialog(dialog, title, groupName, widgetName) {
                 const value = valueElement.value;
                 const condition = conditionElement.value;
 
-                if (filterText && value.toLowerCase().includes(filterText)) {
-                    valueElement.style.background = "rgba(255, 0, 0, 0.2)";
-                    counter++;
+                let visible = false;
+                if (filterText) {
+                    if (value.toLowerCase().includes(filterText)) {
+                        visible = true;
+                    }
+                    if (condition.toLowerCase().includes(filterText)) {
+                        visible = true;
+                    }
                 } else {
-                    valueElement.style.background = "var(--comfy-input-bg)";
+                    visible = true;
                 }
-                if (filterText && condition.toLowerCase().includes(filterText)) {
-                    conditionElement.style.background = "rgba(255, 0, 0, 0.2)";
-                    counter++;
+                if (visible) {
+                    counter += 1;
+                    conditionElement.previousElementSibling.style.display = "block";
+                    conditionElement.style.display = "block";
+                    valueElement.style.display = "block";
+                    valueElement.nextElementSibling.style.display = "block";
                 } else {
-                    conditionElement.style.background = "var(--comfy-input-bg)";
+                    conditionElement.previousElementSibling.style.display = "none";
+                    conditionElement.style.display = "none";
+                    valueElement.style.display = "none";
+                    valueElement.nextElementSibling.style.display = "none";
                 }
             });
             dialog.filter_counter.textContent = `${counter} / ${dialog.valueElements.length}`;
@@ -378,8 +389,10 @@ function show_dialog(dialog, title, groupName, widgetName) {
             if (!dialog.filterElement.value) {
                 dialog.valueElements.forEach((valueElement, index) => {
                     const conditionElement = dialog.conditionElements[index];
-                    valueElement.style.background = "var(--comfy-input-bg)";
-                    conditionElement.style.background = "var(--comfy-input-bg)";
+                    conditionElement.previousElementSibling.style.display = "block";
+                    conditionElement.style.display = "block";
+                    valueElement.style.display = "block";
+                    valueElement.nextElementSibling.style.display = "block";
                 });
             }
         });

@@ -633,6 +633,7 @@ function add_buttons_widget(node) {
         },
         setValue(value) {
             auto_template_checkbox.checked = value;
+            auto_complete = value;
         },
         onDraw(w) {
             Object.assign(w.element.style, {
