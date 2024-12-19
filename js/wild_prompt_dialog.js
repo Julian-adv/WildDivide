@@ -439,7 +439,9 @@ function show_dialog(dialog, title, groupName, widgetName) {
         });
         container.append(value_container);
 
-        dialog.filter_counter.textContent = `0 / ${dialog.valueElements.length}`;
+        if (dialog.filter_counter) {
+            dialog.filter_counter.textContent = `0 / ${dialog.valueElements.length}`;
+        }
     }
 
     dialog.show(title);
