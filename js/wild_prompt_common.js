@@ -39,6 +39,13 @@ export async function refresh_wildcards() {
     }
 }
 
+export function values_for_key(widget_name) {
+    const key = `m/${widget_name}`;
+    const mapped_values = wildcards_dict[key].map((value) => value.includes("=>") ? value.split("=>")[1].trim() : value);
+    const values = ["disabled", "random", ...mapped_values];
+    return values;
+}
+
 export function find_similar_value(value, values) {
     if (value == null || value == undefined) {
         return "random";
@@ -93,4 +100,18 @@ function levenshtein_distance(str1, str2) {
         }
     }
     return dp[m][n];
+}
+
+export function setValueColor(el, value) {
+    el.textContent = value;
+    if (el.tooltip) {
+        el.tooltip.textContent = value;
+    }
+    if (value == 'disabled') {
+        el.style.color = "var(--p-form-field-disabled-color)";
+    } else if (value == 'random') {
+        el.style.color = "var(--p-primary-color)";
+    } else {
+        el.style.color = "var(--fg-color)";
+    }
 }

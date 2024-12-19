@@ -1,7 +1,7 @@
 import { api } from "../../scripts/api.js";
 import { refresh_wildcards, get_wildcards_dict} from "./wild_prompt_common.js";
 import { update_last_generated } from "./wild_prompt_tooltip.js";
-import { update_context_menu } from "./wild_prompt_generator.js";
+import { update_context_menu } from "./wild_prompt_context_menu.js";
 
 let addDialog = null;
 let edit_dialog = null;

@@ -2,8 +2,9 @@ import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 import { get_tooltips_shown, show_last_generated, update_last_generated,
          set_tooltip_position_all, clear_tooltips } from "./wild_prompt_tooltip.js";
-import { show_add_dialog, show_edit_dialog, show_add_group_dialog, show_edit_group_dialog, join_group_key } from "./wild_prompt_dialog.js";
-import { set_generator_node, refresh_wildcards, load_wildcards, get_wildcards_dict, find_similar_value } from "./wild_prompt_common.js";
+import { show_add_dialog, show_edit_dialog, show_add_group_dialog, show_edit_group_dialog } from "./wild_prompt_dialog.js";
+import { set_generator_node, refresh_wildcards, load_wildcards, find_similar_value, values_for_key, setValueColor } from "./wild_prompt_common.js";
+import { show_context_menu, close_context_menu } from "./wild_prompt_context_menu.js";
 
 let wildcards_dict = await load_wildcards();
 
@@ -71,81 +72,11 @@ function draw_scrollbar(ctx, node) {
     ctx.restore();
 }
 
-let dialog = null;
-
-function setValueColor(el, value) {
-    el.textContent = value;
-    if (el.tooltip) {
-        el.tooltip.textContent = value;
-    }
-    if (value == 'disabled') {
-        el.style.color = "var(--p-form-field-disabled-color)";
-    } else if (value == 'random') {
-        el.style.color = "var(--p-primary-color)";
-    } else {
-        el.style.color = "var(--fg-color)";
-    }
-}
-
-function calculate_context_menu_position(element, context_menu) {
-    const window_width = window.innerWidth;
-    const window_height = window.innerHeight;
-    const rect = element.getBoundingClientRect();
-    const context_menu_width = context_menu.offsetWidth;
-    const context_menu_height = context_menu.offsetHeight;
-    const margin_x = 40;
-    const margin_y = 44 + 16
-
-    // Get the position of the text node within the span
-    const text_node = Array.from(element.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
-    let text_rect;
-    if (text_node) {
-        const range = document.createRange();
-        range.selectNode(text_node);
-        text_rect = range.getBoundingClientRect();
-    } else {
-        text_rect = element.getBoundingClientRect();
-    }
-
-    // Align the left of the text with x and place it below
-    let nx = text_rect.left;
-    let ny = rect.bottom;
-
-    // Adjust if the context menu goes beyond the right boundary
-    if (nx + context_menu_width > window_width - margin_x) {
-        nx = window_width - context_menu_width - margin_x;
-    }
-
-    // Make sure the left has at least margin_x of space
-    if (nx < margin_x) {
-        nx = margin_x;
-    }
-
-    // If there is not enough space below, show it above
-    if (ny + context_menu_height > window_height - margin_y) {
-        ny = rect.top - context_menu_height;
-    }
-
-    // Make sure the top has at least margin_y of space
-    if (ny < margin_y) {
-        ny = margin_y;
-    }
-
-    return [nx, ny];
-}
-
 let fromKey = null;
 let group_name = null;
 let show_tooltips_checkbox = null;
 let auto_template_checkbox = null;
 let isCtrlDrag = false;
-
-function close_context_menu(node) {
-    if (node.context_menu) {
-        node.context_menu.style.display = "none";
-        node.context_menu = null;
-    }
-}
 
 // Sets up the node with the wildcards.
 export function setup_node(node, new_wildcards_dict) {
@@ -351,84 +282,6 @@ function add_combo_widget(node, widgetName, value, visible) {
         }
         widget.select_elem.remove();
     };
-}
-
-function show_context_menu(node, select_elem) {
-    const old_context_menu = node.context_menu;
-    close_context_menu(node);
-    if (old_context_menu !== select_elem.context_menu || !select_elem.context_menu) {
-        if (!select_elem.context_menu) {
-            create_context_menu(select_elem);
-        }
-        select_elem.context_menu.style.display = "block";
-        node.context_menu = select_elem.context_menu;
-        const [x, y] = calculate_context_menu_position(select_elem, select_elem.context_menu);
-        select_elem.context_menu.style.left = `${x}px`;
-        select_elem.context_menu.style.top = `${y}px`;
-    }
-}
-
-export function update_context_menu(node, widget_name) {
-    if (!widget_name) {
-        return;
-    }
-    const select_elem = node.widgets.find((widget) => widget.name === widget_name).select_elem;
-    wildcards_dict = get_wildcards_dict();
-    create_context_menu(select_elem);
-}
-
-// Create context menu
-function create_context_menu(select_elem) {
-    const values = values_for_key(select_elem.closest('.widget-container').querySelector('label').textContent);
-    const context_menu = document.createElement("div");
-    Object.assign(context_menu.style, {
-        display: "none",
-        position: "fixed",
-        backgroundColor: "var(--comfy-menu-bg)",
-        minWidth: "100px",
-        maxHeight: "70vh",
-        overflowY: "auto",
-        boxShadow: "0px 8px 16px 0px rgba(0,0,0,0.2)",
-        zIndex: "100",
-        padding: "2px",
-        borderRadius: "4px",
-        border: "1px solid var(--p-form-field-border-color)",
-    });
-
-    // Create menu items
-    for (const v of values) {
-        let option = document.createElement("a");
-        option.href = "#";
-        Object.assign(option.style, {
-            backgroundColor: "var(--comfy-menu-bg)",
-            display: "block",
-            padding: "2px",
-            color: "var(--fg-color)",
-            textDecoration: "none",
-            fontSize: "12px",
-        });
-        setValueColor(option, v);
-        option.addEventListener('mouseover', () => {
-            option.style.backgroundColor = "var(--p-form-field-hover-border-color)";
-        });
-        option.addEventListener('mouseout', () => {
-            option.style.backgroundColor = "var(--comfy-menu-bg)";
-        });
-        option.addEventListener('click', () => {
-            setValueColor(select_elem, v);
-            context_menu.style.display = "none";
-        });
-        context_menu.append(option);
-    }
-    document.body.appendChild(context_menu);
-    select_elem.context_menu = context_menu;
-}
-
-function values_for_key(widget_name) {
-    const key = `m/${widget_name}`;
-    const mapped_values = wildcards_dict[key].map((value) => value.includes("=>") ? value.split("=>")[1].trim() : value);
-    const values = ["disabled", "random", ...mapped_values];
-    return values;
 }
 
 function add_group_widget(node, widgetName, visible) {
@@ -853,36 +706,6 @@ function scroll_widgets(e, node) {
 
 function remove_last_key(key) {
     return key.split('/').slice(0, -1).join('/');
-}
-
-// copy slot from one group to another
-async function copy_slot(fromKey, toKey) {
-    const [from_group, from_key] = split_group_key(fromKey);
-    const [to_group, to_key] = split_group_key(toKey);
-    const name = join_group_key(to_group, from_key);
-    const values = get_values_string(fromKey);
-    
-    // key exists?
-    if (wildcards_dict[`m/${name}`]) {
-        return;
-    }
-
-    await api.fetchApi("/wilddivide/add_slot", {
-        method: "POST",
-        body: JSON.stringify({ name, values }),
-    });
-    await refresh_wildcards();
-}
-
-function get_values_string(key) {
-    return '- ' + wildcards_dict[`m/${key}`].join("\n- ");
-}
-
-function split_group_key(key) {
-    if (key.includes('/')) {
-        return key.split('/');
-    }
-    return ["", key];
 }
 
 function is_text_overflowing(elem) {
