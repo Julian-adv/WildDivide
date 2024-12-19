@@ -5,7 +5,7 @@ export function show_context_menu(node, select_elem) {
     close_context_menu(node);
     if (old_context_menu !== select_elem.context_menu || !select_elem.context_menu) {
         if (!select_elem.context_menu) {
-            create_context_menu(select_elem);
+            create_context_menu(node, select_elem);
         }
         select_elem.context_menu.style.display = "block";
         node.context_menu = select_elem.context_menu;
@@ -36,7 +36,7 @@ export function close_context_menu(node) {
 }
 
 // Create context menu
-function create_context_menu(select_elem) {
+function create_context_menu(node, select_elem) {
     const values = values_for_key(select_elem.closest('.widget-container').querySelector('label').textContent);
     const context_menu = document.createElement("div");
     Object.assign(context_menu.style, {
@@ -70,7 +70,7 @@ function create_context_menu(select_elem) {
     });
     filter.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            close_context_menu(select_elem.closest('.comfy-node'));
+            close_context_menu(node);
         }
     });
     context_menu.prepend(filter);
@@ -115,7 +115,7 @@ export function update_context_menu(node, widget_name) {
     }
     const select_elem = node.widgets.find((widget) => widget.name === widget_name).select_elem;
     wildcards_dict = get_wildcards_dict();
-    create_context_menu(select_elem);
+    create_context_menu(node, select_elem);
 }
 
 function calculate_context_menu_position(element, context_menu) {
