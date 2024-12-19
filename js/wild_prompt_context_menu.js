@@ -23,6 +23,8 @@ export function show_context_menu(node, select_elem) {
                 item.style.backgroundColor = "var(--comfy-menu-bg)";
             }
         });
+
+        select_elem.context_menu.filter.focus();
     }
 }
 
@@ -50,6 +52,29 @@ function create_context_menu(select_elem) {
         borderRadius: "4px",
         border: "1px solid var(--p-form-field-border-color)",
     });
+
+    // Filter
+    const filter = document.createElement("input");
+    filter.type = "text";
+    filter.placeholder = "Filter...";
+    filter.addEventListener('input', () => {
+        const filter_value = filter.value.toLowerCase();
+        const menu_items = context_menu.querySelectorAll('a');
+        menu_items.forEach(item => {
+            if (item.textContent.toLowerCase().includes(filter_value)) {
+                item.style.display = "block";
+            } else {
+                item.style.display = "none";
+            }
+        });
+    });
+    filter.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            close_context_menu(select_elem.closest('.comfy-node'));
+        }
+    });
+    context_menu.prepend(filter);
+    context_menu.filter = filter;
 
     // Create menu items
     for (const v of values) {
