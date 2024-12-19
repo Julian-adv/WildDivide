@@ -12,6 +12,17 @@ export function show_context_menu(node, select_elem) {
         const [x, y] = calculate_context_menu_position(select_elem, select_elem.context_menu);
         select_elem.context_menu.style.left = `${x}px`;
         select_elem.context_menu.style.top = `${y}px`;
+
+        // Highlight current value
+        const current_value = select_elem.textContent;
+        const menu_items = select_elem.context_menu.querySelectorAll('a');
+        menu_items.forEach(item => {
+            if (item.textContent === current_value) {
+                item.style.backgroundColor = "var(--p-button-outlined-info-border-color)";
+            } else {
+                item.style.backgroundColor = "var(--comfy-menu-bg)";
+            }
+        });
     }
 }
 
@@ -57,7 +68,11 @@ function create_context_menu(select_elem) {
             option.style.backgroundColor = "var(--p-form-field-hover-border-color)";
         });
         option.addEventListener('mouseout', () => {
-            option.style.backgroundColor = "var(--comfy-menu-bg)";
+            if (v === select_elem.textContent) {
+                option.style.backgroundColor = "var(--p-button-outlined-info-border-color)";
+            } else {
+                option.style.backgroundColor = "var(--comfy-menu-bg)";
+            }
         });
         option.addEventListener('click', () => {
             setValueColor(select_elem, v);
