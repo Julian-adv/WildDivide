@@ -22,17 +22,18 @@ export function show_add_dialog(group_name, node) {
     show_dialog(addDialog, "Add Slot", group_name, "");
 }
 
-export function show_edit_dialog(widgetName, node) {
+export function show_edit_dialog(widget_name, node) {
     if (!edit_dialog) {
-        edit_dialog = setup_dialog(DialogType.EDIT, node, widgetName);
+        edit_dialog = setup_dialog(DialogType.EDIT, node, widget_name);
     }
-    let groupName = "";
-    if (widgetName.includes("/")) {
-        [groupName, widgetName] = widgetName.split("/");
+    let group_name = "";
+    let widget_only_name = widget_name;
+    if (widget_name.includes("/")) {
+        [group_name, widget_only_name] = widget_name.split("/");
     }
 
-    edit_dialog.org_name = widgetName;
-    show_dialog(edit_dialog, `Edit Slot: ${widgetName}`, groupName, widgetName);
+    edit_dialog.org_name = widget_name;
+    show_dialog(edit_dialog, `Edit Slot: ${widget_name}`, group_name, widget_only_name);
 }
 
 export function show_edit_group_dialog(groupName, node) {
@@ -66,10 +67,13 @@ function setup_dialog(dialogType, node, widget_name) {
         } else {
             const wildcards_dict = get_wildcards_dict();
 
-            let values = "- " + dialog.valueElements.map((element, index) => {
-                const condition = dialog.conditionElements[index].value || "";
-                const value = element.value || "";
-                return condition ? `${condition} => ${value}` : value;
+            let values = "- " + dialog.entries.map((entry, index) => {
+                const condition = entry.condition.value || "";
+                const prob = entry.prob.value || "";
+                const value = entry.value.value || "";
+                return condition ? (prob ? `${condition} => ${prob},${value}`
+                                         : `${condition} => ${value}`)
+                                 : (prob ? `${prob},${value}` : value);
             }).join("\n- ");
 
             const key = key_from_dialog(dialog);
@@ -88,9 +92,8 @@ function setup_dialog(dialogType, node, widget_name) {
                 await save_slot(key, values);
                 dialog.close();
                 setTimeout(() => {
-                    update_last_generated(node);
                     update_context_menu(node, widget_name);
-                }, 10);
+                }, 20);
             }
         }
     });
@@ -353,10 +356,9 @@ function show_dialog(dialog, title, groupName, widgetName) {
         dialog.filterElement.addEventListener("input", () => {
             const filterText = dialog.filterElement.value.toLowerCase();
             let counter = 0;
-            dialog.valueElements.forEach((valueElement, index) => {
-                const conditionElement = dialog.conditionElements[index];
-                const value = valueElement.value;
-                const condition = conditionElement.value;
+            dialog.entries.forEach((entry, index) => {
+                const value = entry.value.value;
+                const condition = entry.condition.value;
 
                 let visible = false;
                 if (filterText) {
@@ -371,28 +373,18 @@ function show_dialog(dialog, title, groupName, widgetName) {
                 }
                 if (visible) {
                     counter += 1;
-                    conditionElement.previousElementSibling.style.display = "block";
-                    conditionElement.style.display = "block";
-                    valueElement.style.display = "block";
-                    valueElement.nextElementSibling.style.display = "block";
+                    entry.style.display = "block";
                 } else {
-                    conditionElement.previousElementSibling.style.display = "none";
-                    conditionElement.style.display = "none";
-                    valueElement.style.display = "none";
-                    valueElement.nextElementSibling.style.display = "none";
+                    entry.style.display = "none";
                 }
             });
-            dialog.filter_counter.textContent = `${counter} / ${dialog.valueElements.length}`;
+            dialog.filter_counter.textContent = `${counter} / ${dialog.entries.length}`;
         });
 
         dialog.filterElement.addEventListener("change", () => {
             if (!dialog.filterElement.value) {
-                dialog.valueElements.forEach((valueElement, index) => {
-                    const conditionElement = dialog.conditionElements[index];
-                    conditionElement.previousElementSibling.style.display = "block";
-                    conditionElement.style.display = "block";
-                    valueElement.style.display = "block";
-                    valueElement.nextElementSibling.style.display = "block";
+                dialog.entries.forEach((entry, index) => {
+                    entry.style.display = "block";
                 });
             }
         });
@@ -407,28 +399,26 @@ function show_dialog(dialog, title, groupName, widgetName) {
     }
     container.append(header);
 
-    dialog.valueElements = [];
-    dialog.conditionElements = [];
+    dialog.entries = [];
 
     if (dialog.type === DialogType.ADD || dialog.type === DialogType.EDIT || dialog.type === DialogType.ADD_GROUP) {
         const value_container = document.createElement("div");
         Object.assign(value_container.style, {
-            display: "grid",
-            gridTemplateColumns: "auto 1fr 2fr auto",
-            alignItems: "baseline",
-            gap: "0px 2px",
-            marginTop: "10px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "2px",
             maxHeight: "60vh",
             overflowY: "auto",
-            paddingRight: "10px"
+            paddingRight: "6px",
+            alignItems: "center",
         });
 
         const marker = document.createElement("span");
         const addButton = document.createElement("button");
         Object.assign(addButton.style, {
+            width: "90%",
             fontSize: "14px",
             backgroundColor: "transparent",
-            gridColumn: "2 / span 2",
         });
         addButton.textContent = "Add new value (shift+⏎)";
         addButton.onclick = function () {
@@ -439,14 +429,14 @@ function show_dialog(dialog, title, groupName, widgetName) {
 
         const values = widgetName == "" ? [["", ""]] : get_values_array(groupName, widgetName);
 
-        add_column_header(dialog, marker);
+        add_column_header(container);
         values.forEach(([condition, value]) => {
             add_new_value(dialog, "-", condition, value, marker);
         });
         container.append(value_container);
 
         if (dialog.filter_counter) {
-            dialog.filter_counter.textContent = `0 / ${dialog.valueElements.length}`;
+            dialog.filter_counter.textContent = `0 / ${dialog.entries.length}`;
         }
     }
 
@@ -458,8 +448,8 @@ function show_dialog(dialog, title, groupName, widgetName) {
     dialog.textElement.append(container);
     if (dialog.type === DialogType.EDIT) {
         setTimeout(() => {
-            dialog.valueElements[dialog.valueElements.length - 1].focus();
-            dialog.valueElements[dialog.valueElements.length - 1].scrollIntoView({ behavior: "smooth", block: "center" });
+            dialog.entries[dialog.entries.length - 1].value.focus();
+            dialog.entries[dialog.entries.length - 1].value.scrollIntoView({ behavior: "smooth", block: "center" });
         }, 100);
     } else if (dialog.type === DialogType.ADD_GROUP || dialog.type === DialogType.EDIT_GROUP) {
         setTimeout(() => {
@@ -539,33 +529,76 @@ async function delete_slot(name) {
     }
 }
 
-function add_column_header(dialog, marker) {
-    const dummy = document.createElement("span");
-    marker.before(dummy);
+const label_width = "1em";
+const condition_width = "150px";
+const prob_width = "56px";
+const value_width = "300px";
+const delete_width = "16px";
+
+function add_column_header(container) {
+    const header_container = document.createElement("div");
+    Object.assign(header_container.style, {
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "center",
+        gap: "4px",
+        marginTop: "10px",
+    })
+
+    const label = document.createElement("label");
+    Object.assign(label.style, {
+        width: label_width,
+    })
+    header_container.append(label);
 
     const condition_element = document.createElement("label");
     Object.assign(condition_element.style, {
-        paddingTop: "5px",
+        width: condition_width,
     })
     condition_element.textContent = "Condition";
-    marker.before(condition_element);
+    header_container.append(condition_element);
+
+    const prob_element = document.createElement("label");
+    Object.assign(prob_element.style, {
+        width: prob_width,
+    })
+    prob_element.textContent = "Prob %";
+    header_container.append(prob_element);
 
     const value_element = document.createElement("label");
+    Object.assign(value_element.style, {
+        width: value_width,
+    })
     value_element.textContent = "Value";
-    marker.before(value_element);
+    header_container.append(value_element);
 
-    const dummy2 = document.createElement("span");
-    marker.before(dummy2);
+    const delete_element = document.createElement("span");
+    Object.assign(delete_element.style, {
+        width: delete_width,
+    })
+    header_container.append(delete_element);
+    container.append(header_container);
 }
 
 function add_new_value(dialog, label, condition, value, marker) {
-    const labelElement = document.createElement("label");
-    Object.assign(labelElement.style, {
+    const container = document.createElement("div");
+    Object.assign(container.style, {
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "center",
+        gap: "4px",
+        border: "none",
+        padding: "0px",
+        alignItems: "start",
+    })
+    const label_element = document.createElement("label");
+    Object.assign(label_element.style, {
+        width: label_width,
         textAlign: "right",
         cursor: "move",
     });
-    labelElement.textContent = label;
-    labelElement.draggable = true;
+    label_element.textContent = label;
+    label_element.draggable = true;
 
     const condition_element = document.createElement("textarea");
     condition_element.classList.add("comfy-multiline-input");
@@ -580,9 +613,22 @@ function add_new_value(dialog, label, condition, value, marker) {
     })
     condition_element.value = condition;
 
-    const valueElement = document.createElement("textarea");
-    valueElement.classList.add("comfy-multiline-input");
-    Object.assign(valueElement.style, {
+    const prob_element = document.createElement("input");
+    prob_element.type = "number";
+    Object.assign(prob_element.style, {
+        width: "50px",
+        height: "3ex",
+        fontSize: "14px",
+        resize: "none",
+        overflow: "hidden",
+        borderRadius: "4px",
+        padding: "2px 5px",
+        border: "none",
+    })
+
+    const value_element = document.createElement("textarea");
+    value_element.classList.add("comfy-multiline-input");
+    Object.assign(value_element.style, {
         width: "300px",
         height: "3ex",
         fontSize: "14px",
@@ -591,67 +637,55 @@ function add_new_value(dialog, label, condition, value, marker) {
         borderRadius: "4px",
         padding: "2px 5px",
     });
-    valueElement.value = value;
+    value_element.value = value;
 
     // Setup drag and drop
-    labelElement.addEventListener("dragstart", (e) => {
-        e.dataTransfer.setData("text/plain", dialog.valueElements.indexOf(valueElement));
+    label_element.addEventListener("dragstart", (e) => {
+        e.dataTransfer.setData("text/plain", dialog.entries.indexOf(container));
     });
-    labelElement.addEventListener("dragover", (e) => {
+    label_element.addEventListener("dragover", (e) => {
         e.preventDefault();
     });
-    labelElement.addEventListener("drop", (e) => {
+    label_element.addEventListener("drop", (e) => {
         e.preventDefault();
-        const draggedIndex = parseInt(e.dataTransfer.getData("text/plain"));
-        const targetIndex = dialog.valueElements.indexOf(valueElement);
-        if (draggedIndex !== targetIndex) {
-            const draggedValueElement = dialog.valueElements[draggedIndex];
-            const draggedConditionElement = draggedValueElement.previousElementSibling;
-            const draggedLabelElement = draggedConditionElement.previousElementSibling;
-            const draggedDeleteButton = draggedValueElement.nextElementSibling;
+        const dragged_index = parseInt(e.dataTransfer.getData("text/plain"));
+        const target_index = dialog.entries.indexOf(container);
+        if (dragged_index !== target_index) {
+            const dragged_container = dialog.entries[dragged_index];
             
             // Update array order
-            dialog.valueElements.splice(draggedIndex, 1);
-            dialog.valueElements.splice(targetIndex, 0, draggedValueElement);
-            dialog.conditionElements.splice(draggedIndex, 1);
-            dialog.conditionElements.splice(targetIndex, 0, draggedConditionElement);
+            dialog.entries.splice(dragged_index, 1);
+            dialog.entries.splice(target_index, 0, dragged_container);
             
             // Move DOM elements
-            if (targetIndex > draggedIndex) {
-                valueElement.nextElementSibling.after(draggedDeleteButton);
-                valueElement.nextElementSibling.after(draggedValueElement);
-                valueElement.nextElementSibling.after(draggedConditionElement);
-                valueElement.nextElementSibling.after(draggedLabelElement);
+            if (target_index > dragged_index) {
+                container.after(dragged_container);
             } else {
-                labelElement.before(draggedLabelElement);
-                draggedLabelElement.after(draggedConditionElement)
-                draggedConditionElement.after(draggedValueElement);
-                draggedValueElement.after(draggedDeleteButton);
+                container.before(dragged_container);
             }
         }
     });
     
     // Shift+Enter to add new value
-    valueElement.addEventListener("keydown", function(e) {
+    value_element.addEventListener("keydown", function(e) {
         if (e.shiftKey && e.key === "Enter") {
             e.preventDefault();
-            const valueElement = add_new_value(dialog, "-", "", "", marker);
-            valueElement.focus();
+            const value_element = add_new_value(dialog, "-", "", "", marker);
+            value_element.focus();
         }
     });
     
-    dialog.valueElements.push(valueElement);
-    dialog.conditionElements.push(condition_element);
+    dialog.entries.push(container);
 
     condition_element.addEventListener("input", () => { adjust_textarea_height(condition_element); });
-    valueElement.addEventListener("input", () => { adjust_textarea_height(valueElement); });
+    value_element.addEventListener("input", () => { adjust_textarea_height(value_element); });
     setTimeout(() => {
-        adjust_textarea_height(valueElement);
+        adjust_textarea_height(value_element);
         adjust_textarea_height(condition_element);
     }, 0);
 
-    const deleteButton = document.createElement("button");
-    Object.assign(deleteButton.style, {
+    const delete_button = document.createElement("button");
+    Object.assign(delete_button.style, {
         fontSize: "14px",
         backgroundColor: "transparent",
         padding: "0px",
@@ -661,17 +695,21 @@ function add_new_value(dialog, label, condition, value, marker) {
         height: "16px",
         color: "var(--p-form-field-float-label-color)",
     });
-    deleteButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"> <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /> </svg>';
-    deleteButton.onclick = function() {
-        dialog.valueElements.splice(dialog.valueElements.indexOf(valueElement), 1);
-        dialog.conditionElements.splice(dialog.conditionElements.indexOf(condition_element), 1);
-        labelElement.remove();
+    delete_button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"> <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /> </svg>';
+    delete_button.onclick = function() {
+        dialog.entries.splice(dialog.entries.indexOf(container), 1);
+        label_element.remove();
         condition_element.remove();
-        valueElement.remove();
-        deleteButton.remove();
+        prob_element.remove();
+        value_element.remove();
+        delete_button.remove();
     }
-    marker.before(labelElement, condition_element, valueElement, deleteButton);
-    return valueElement;
+    container.append(label_element, condition_element, prob_element, value_element, delete_button);
+    container.condition = condition_element;
+    container.prob = prob_element;
+    container.value = value_element;
+    marker.before(container);
+    return container;
 }
 
 function adjust_textarea_height(textarea) {
