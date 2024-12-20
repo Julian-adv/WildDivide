@@ -397,6 +397,12 @@ function show_dialog(dialog, title, groupName, widgetName) {
             }
         });
 
+        dialog.filterElement.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") {
+                dialog.close();
+            }
+        });
+
         header.append(filterLabel, filter_container, clear_filter_button);
     }
     container.append(header);
