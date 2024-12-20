@@ -703,7 +703,7 @@ function get_values_array(group, key) {
     const wildcards_dict = get_wildcards_dict();
     const values = wildcards_dict['m/' + join_group_key(group, key)];
     return values.map(str => {
-        const match = str.match(/^(.*?)\s*=>\s*(.*)$/);
+        const match = str.match(/^(.*?)\s*=>\s*([\s\S]*)$/);
         return match ? [match[1], match[2]] : ["", str];
     });
 }
