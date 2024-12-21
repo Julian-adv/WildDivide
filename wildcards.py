@@ -119,17 +119,25 @@ def weighted_random_choice(items):
             num_choices = random.randint(int(r.group(1)), int(r.group(2)))
             start_index = 1
 
+    total_prob = 0.0
+    written_items = []
+    unwritten_items = []
     for item in items[start_index:]:
         parts = item.split(",", 1)  # split on first comma
-        if is_numeric_string(parts[0].strip()):
-            weight = float(parts[0].strip())
-            content = parts[1] if len(parts) > 1 else ""
+        if len(parts) > 1 and is_numeric_string(parts[0].strip()):
+            prob = float(parts[0].strip())
+            total_prob += prob
+            written_items.append((prob, parts[1].strip()))
         else:
-            weight = 1.0
-            content = item
+            unwritten_items.append(item)
 
-        total_weight += weight
-        weighted_items.append((weight, content))
+    if total_prob > 100.0:
+        weighted_items = written_items
+        total_weight = total_prob
+    else:
+        rest_prob = (100.0 - total_prob) / len(unwritten_items) if unwritten_items else 0.0
+        weighted_items = written_items + [(rest_prob, item) for item in unwritten_items]
+        total_weight = 100.0
 
     choices = []
     available_items = weighted_items.copy()

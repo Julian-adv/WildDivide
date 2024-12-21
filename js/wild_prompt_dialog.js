@@ -66,16 +66,7 @@ function setup_dialog(dialogType, node, widget_name) {
             dialog.close();
         } else {
             const wildcards_dict = get_wildcards_dict();
-
-            let values = "- " + dialog.entries.map((entry, index) => {
-                const condition = entry.condition.value || "";
-                const prob = entry.prob.value || "";
-                const value = entry.value.value || "";
-                return condition ? (prob ? `${condition} => ${prob},${value}`
-                                         : `${condition} => ${value}`)
-                                 : (prob ? `${prob},${value}` : value);
-            }).join("\n- ");
-
+            let values = get_values(dialog);
             const key = key_from_dialog(dialog);
             // check if key exists
             if (key == "") {
@@ -413,25 +404,44 @@ function show_dialog(dialog, title, groupName, widgetName) {
             alignItems: "center",
         });
 
-        const marker = document.createElement("span");
+        const marker = document.createElement("div");
+        Object.assign(marker.style, {
+            width: "90%",
+            display: "flex",
+            flexDirection: "row",
+            gap: "4px"
+        });
+
+        const adjust_prob_button = document.createElement("button");
+        Object.assign(adjust_prob_button.style, {
+            flex: "1",
+            fontSize: "14px",
+            backgroundColor: "transparent",
+        })
+        adjust_prob_button.textContent = "Adjust probabilities";
+        adjust_prob_button.onclick = function () {
+            adjust_probabilities(dialog);
+        }
+
         const addButton = document.createElement("button");
         Object.assign(addButton.style, {
-            width: "90%",
+            flex: "1",
             fontSize: "14px",
             backgroundColor: "transparent",
         });
         addButton.textContent = "Add new value (shift+⏎)";
         addButton.onclick = function () {
-            const valueElement = add_new_value(dialog, "-", "", "", marker);
+            const valueElement = add_new_value(dialog, "-", "", "", "", marker);
             valueElement.focus();
         };
-        value_container.append(marker, addButton);
+        marker.append(adjust_prob_button, addButton);
+        value_container.append(marker);
 
-        const values = widgetName == "" ? [["", ""]] : get_values_array(groupName, widgetName);
+        const values = widgetName == "" ? [["", "", ""]] : get_values_array(groupName, widgetName);
 
         add_column_header(container);
-        values.forEach(([condition, value]) => {
-            add_new_value(dialog, "-", condition, value, marker);
+        values.forEach(([condition, prob, value]) => {
+            add_new_value(dialog, "-", condition, prob, value, marker);
         });
         container.append(value_container);
 
@@ -531,7 +541,7 @@ async function delete_slot(name) {
 
 const label_width = "1em";
 const condition_width = "150px";
-const prob_width = "56px";
+const prob_width = "64px";
 const value_width = "300px";
 const delete_width = "16px";
 
@@ -580,7 +590,7 @@ function add_column_header(container) {
     container.append(header_container);
 }
 
-function add_new_value(dialog, label, condition, value, marker) {
+function add_new_value(dialog, label, condition, prob, value, marker) {
     const container = document.createElement("div");
     Object.assign(container.style, {
         display: "flex",
@@ -604,7 +614,7 @@ function add_new_value(dialog, label, condition, value, marker) {
     condition_element.classList.add("comfy-multiline-input");
     Object.assign(condition_element.style, {
         width: "150px",
-        height: "3ex",
+        height: "22px",
         fontSize: "14px",
         resize: "none",
         overflow: "hidden",
@@ -617,20 +627,27 @@ function add_new_value(dialog, label, condition, value, marker) {
     prob_element.type = "number";
     Object.assign(prob_element.style, {
         width: "50px",
-        height: "3ex",
-        fontSize: "14px",
+        height: "22px",
+        fontSize: "12px",
         resize: "none",
         overflow: "hidden",
         borderRadius: "4px",
-        padding: "2px 5px",
+        padding: "4px 5px",
         border: "none",
+    })
+    prob_element.value = prob;
+    prob_element.calculated = prob === "" ? true : false;
+    prob_element.addEventListener("input", () => {
+        if (prob_element.value) {
+            prob_element.calculated = false;
+        }
     })
 
     const value_element = document.createElement("textarea");
     value_element.classList.add("comfy-multiline-input");
     Object.assign(value_element.style, {
         width: "300px",
-        height: "3ex",
+        height: "22px",
         fontSize: "14px",
         resize: "none",
         overflow: "hidden",
@@ -670,7 +687,7 @@ function add_new_value(dialog, label, condition, value, marker) {
     value_element.addEventListener("keydown", function(e) {
         if (e.shiftKey && e.key === "Enter") {
             e.preventDefault();
-            const value_element = add_new_value(dialog, "-", "", "", marker);
+            const value_element = add_new_value(dialog, "-", "", "", "", marker);
             value_element.focus();
         }
     });
@@ -747,11 +764,62 @@ function get_values_array(group, key) {
     const wildcards_dict = get_wildcards_dict();
     const values = wildcards_dict['m/' + join_group_key(group, key)];
     return values.map(str => {
+        let condition = "";
+        let value = str;
         const match = str.match(/^(.*?)\s*=>\s*([\s\S]*)$/);
-        return match ? [match[1], match[2]] : ["", str];
+        if (match) {
+            condition = match[1];
+            value = match[2];
+        }
+        const match2 = value.match(/^\s*(\d+\.?\d*|\d*\.?\d+)\s*,\s*([\s\S]*)$/);
+        return match2 ? [condition, match2[1], match2[2]] : [condition, "", value];
     });
 }
 
 export function join_group_key(group, key) {
     return group == "" ? key : `${group}/${key}`;
+}
+
+function adjust_probabilities(dialog) {
+    let total_prob = 0;
+    let empty_count = 0;
+    let filled_count = 0;
+    dialog.entries.forEach((entry) => {
+        const prob = entry.prob.value || "";
+        if (prob && !entry.prob.calculated) {
+            total_prob += parseFloat(prob);
+            filled_count++;
+        } else {
+            empty_count++;
+        }
+    })
+    if (total_prob > 100) {
+        const ratio = 100 / total_prob;
+        dialog.entries.forEach((entry) => {
+            if (entry.prob.value) {
+                entry.prob.value = (parseFloat(entry.prob.value) * ratio).toFixed(1);
+            }
+        })
+    } else {
+        const rest_prob = 100 - total_prob;
+        const empty_prob = (rest_prob / empty_count).toFixed(1);
+        dialog.entries.forEach((entry) => {
+            if (!entry.prob.value || entry.prob.calculated) {
+                entry.prob.value = empty_prob;
+                entry.prob.style.color = "var(--p-form-field-disabled-background)";
+                entry.prob.calculated = true;
+            }
+        })
+    }
+}
+
+function get_values(dialog) {
+    return "- " + dialog.entries.map((entry, index) => {
+        const condition = entry.condition.value || "";
+        const prob = entry.prob.calculated ? "" : (entry.prob.value || "");
+        const value = entry.value.value || "";
+        return condition ? (prob ? `${condition} => ${prob},${value}`
+                                    : `${condition} => ${value}`)
+                            : (prob ? `${prob},${value}` : value);
+    }).join("\n- ");
 }

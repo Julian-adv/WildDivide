@@ -114,7 +114,6 @@ export function update_context_menu(node, widget_name) {
         return;
     }
     const select_elem = node.widgets.find((widget) => widget.name === widget_name).select_elem;
-    wildcards_dict = get_wildcards_dict();
     create_context_menu(node, select_elem);
 }
 
