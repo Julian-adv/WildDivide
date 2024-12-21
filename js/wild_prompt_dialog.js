@@ -373,7 +373,7 @@ function show_dialog(dialog, title, groupName, widgetName) {
                 }
                 if (visible) {
                     counter += 1;
-                    entry.style.display = "block";
+                    entry.style.display = "flex";
                 } else {
                     entry.style.display = "none";
                 }
@@ -384,7 +384,7 @@ function show_dialog(dialog, title, groupName, widgetName) {
         dialog.filterElement.addEventListener("change", () => {
             if (!dialog.filterElement.value) {
                 dialog.entries.forEach((entry, index) => {
-                    entry.style.display = "block";
+                    entry.style.display = "flex";
                 });
             }
         });
