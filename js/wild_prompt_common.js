@@ -41,7 +41,16 @@ export async function refresh_wildcards() {
 
 export function values_for_key(widget_name) {
     const key = `m/${widget_name}`;
-    const mapped_values = wildcards_dict[key].map((value) => value.includes("=>") ? value.split("=>")[1].trim() : value);
+    const mapped_values = wildcards_dict[key].map((value) => {
+        if (value.includes("=>")) {
+            value = value.split("=>")[1].trim();
+        }
+        const match = value.match(/^\s*(\d+\.?\d*|\d*\.?\d+)\s*,\s*([\s\S]*)$/);
+        if (match) {
+            return match[2];
+        }
+        return value;
+    });
     const values = ["disabled", "random", ...mapped_values];
     return values;
 }
