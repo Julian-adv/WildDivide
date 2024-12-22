@@ -640,6 +640,12 @@ function add_new_value(dialog, label, condition, prob, value, marker) {
     prob_element.addEventListener("input", () => {
         if (prob_element.value) {
             prob_element.calculated = false;
+            prob_element.style.color = "";
+        }
+    })
+    prob_element.addEventListener("focus", () => {
+        if (prob_element.calculated) {
+            prob_element.value = "";
         }
     })
 
