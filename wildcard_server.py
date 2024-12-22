@@ -3,7 +3,7 @@ from . import wildcards
 from . import wild_prompt_generator
 from aiohttp import web
 
-VERSION = "0.5.1"
+VERSION = "0.6.0"
 
 @PromptServer.instance.routes.get("/wilddivide/refresh")
 async def wildcards_refresh(request):
