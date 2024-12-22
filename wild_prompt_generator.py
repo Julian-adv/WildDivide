@@ -22,7 +22,21 @@ class WildPromptGenerator:
                 menu.append(k)
         menu_list = {}
         for key in menu:
-            values = [x.split("=>")[1].strip() if "=>" in x else x for x in dict[key]]
+            def process_value(x):
+                if "=>" in x:
+                    right_part = x.split("=>")[1].strip()
+                else:
+                    right_part = x.strip()
+                if "," in right_part:
+                    parts = right_part.split(",", 1)
+                    try:
+                        float(parts[0].strip())
+                        return parts[1].strip()
+                    except ValueError:
+                        pass
+                return right_part
+            
+            values = [process_value(x) for x in dict[key]]
             menu_list[key[2:]] = (["disabled", "random"] + values, )
         return menu_list
 

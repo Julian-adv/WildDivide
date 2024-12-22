@@ -108,7 +108,7 @@ export function setup_node(node, new_wildcards_dict) {
             add_combo_widget(node, slotName, value, true);
         }
     }
-    add_buttons_widget(node);
+    add_buttons_widget(node, old_values["auto_template"]);
     add_version_widget(node);
     node.size[0] = width;
     setup_node_hidden(node);
@@ -356,7 +356,7 @@ function add_group_widget(node, widgetName, visible) {
     group_name = widgetName;
 }
 
-function add_buttons_widget(node) {
+function add_buttons_widget(node, old_value) {
     const container = document.createElement("div");
     Object.assign(container.style, {
         display: "flex",
@@ -428,6 +428,7 @@ function add_buttons_widget(node) {
                     margin: "0",
                     cursor: "pointer",
                 });
+                auto_template_checkbox.checked = old_value;
                 
                 // Prevent checkbox from triggering button click
                 auto_template_checkbox.addEventListener("click", (e) => {
@@ -483,7 +484,6 @@ function add_buttons_widget(node) {
         },
         setValue(value) {
             auto_template_checkbox.checked = value;
-            console.log("Auto template:", value);
         },
         onDraw(w) {
             Object.assign(w.element.style, {

@@ -128,7 +128,7 @@ def evaluate_pattern(node, values):
         bool: Whether the pattern evaluates to true for the given values
     """
     if node.type == "TERM":
-        return bool(re.search(node.value, values))
+        return bool(re.search(node.value, values, re.IGNORECASE))
     elif node.type == "NOT":
         return not evaluate_pattern(node.left, values)
     elif node.type == "AND":

@@ -99,9 +99,9 @@ function create_tooltip(widget) {
         cursor: pointer;
     `;
     tooltip.append(text);
-    tooltip.addEventListener("wheel", (e) => {
-        scroll_widgets(e, generator_node)
-    })
+    // tooltip.addEventListener("wheel", (e) => {
+    //     scroll_widgets(e, generator_node)
+    // })
     document.body.append(tooltip);
     return tooltip;
 }
