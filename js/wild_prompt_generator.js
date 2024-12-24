@@ -299,6 +299,25 @@ function add_group_widget(node, widgetName, visible) {
     });
     label.textContent = widgetName === ""  ? "overall" : widgetName;
     
+    // All random button
+    const all_random_button = document.createElement("button");
+    Object.assign(all_random_button.style, {
+        backgroundColor: "transparent",
+        border: "1px solid var(--border-color)",
+        borderRadius: "4px",
+        fontSize: "12px",
+        cursor: "pointer",
+    });
+    all_random_button.textContent = "All random";
+    all_random_button.onclick = () => {
+        for (const widget of node.widgets) {
+            if (widgetName === "" && !widget.name.includes("/") && widget.type === "mycombo" ||
+                widgetName !== "" && widget.name.startsWith(widgetName)) {
+                widget.value = "random";
+            }
+        }
+    };
+
     // All disabled button
     const all_disabled_button = document.createElement("button");
     Object.assign(all_disabled_button.style, {
@@ -333,7 +352,7 @@ function add_group_widget(node, widgetName, visible) {
     button.onclick = () => {
         show_edit_group_dialog(widgetName, node);
     };
-    container.append(label, all_disabled_button, button);
+    container.append(label, all_random_button, all_disabled_button, button);
 
     const widget = node.addDOMWidget(widgetName, visible ? 'mygroup' : 'hidden', container, {
         getValue() {
