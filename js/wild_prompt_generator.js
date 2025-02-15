@@ -185,6 +185,7 @@ function add_combo_widget(node, widgetName, value, visible) {
         flex: "1 1 auto",
         width: "150px",
         backgroundColor: "var(--bg-color)",
+        position: "relative",
     });
 
     // Create label
@@ -269,6 +270,7 @@ function add_combo_widget(node, widgetName, value, visible) {
     widget.computeSize = () => [0, widget.type === "hidden" ? -4 : widget_height];
     widget.container = container;
     widget.select_elem = select_elem;
+    widget.container.combo = combo;
     widget.onRemove = () => {
         container.remove();
         if (widget.tooltip) {

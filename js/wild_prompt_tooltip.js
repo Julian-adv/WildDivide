@@ -68,7 +68,7 @@ function create_tooltip(widget) {
         z-index: 90;
         padding: 2px 5px;
         top: 0;
-        left: 0;
+        right: 8px;
         font-size: 12px;
         border: 1px solid var(--p-surface-500);
         border-radius: 4px;
@@ -102,7 +102,7 @@ function create_tooltip(widget) {
     // tooltip.addEventListener("wheel", (e) => {
     //     scroll_widgets(e, generator_node)
     // })
-    document.body.append(tooltip);
+    widget.container.combo.append(tooltip);
     return tooltip;
 }
 
@@ -124,9 +124,8 @@ function set_tooltip_color(widget) {
 
 function set_tooltip_position(widget) {
     widget.tooltip.style.display = "flex";
-    const [x, y] = calc_tooltip_position(widget.select_elem, widget.tooltip);
-    widget.tooltip.style.left = `${x}px`;
-    widget.tooltip.style.top = `${y-4}px`;
+    widget.tooltip.style.right = `8px`;
+    widget.tooltip.style.top = `0px`;
 }
 
 export function clear_tooltips(node) {
@@ -141,5 +140,5 @@ function calc_tooltip_position(el, tooltip) {
     const rect = el.getBoundingClientRect();
     const x = rect.right - tooltip.offsetWidth;
     const y = rect.top;
-    return [x, y];
+    return [0, 0];
 }
