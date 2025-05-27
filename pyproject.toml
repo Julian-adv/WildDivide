@@ -2,7 +2,7 @@
 name = "comfyui-wilddivide"
 description = "This extension provides the ability to build prompts using wildcards for each region of a split image."
 version = "0.1.0"
-license = "GPL-3.0"
+license = { text = "GNU General Public License v3.0" }
 
 [project.urls]
 Repository = "https://github.com/Julian-adv/WildDivide"
