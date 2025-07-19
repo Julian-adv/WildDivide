@@ -163,16 +163,31 @@ class ComfyDivide:
             for positive, mask_composite in zip(positives, mask_composites)
         ]
 
-        positive_combined = conditioning_masks[0]
-        for i in range(1, len(conditioning_masks)):
-            positive_combined = ConditioningCombine().combine(positive_combined, conditioning_masks[i])[0]
-        max_length = max([cond[0].shape[1] for cond in positive_combined])
-        for cond in positive_combined:
-            if cond[0].shape[1] < max_length:
-                pad_length = max_length - cond[0].shape[1]
-                last_token_embedding = cond[0][:, -1:, :]
-                padding = last_token_embedding.repeat(1, pad_length, 1)
-                cond[0] = torch.cat([cond[0], padding], dim=1)
+        # Normalize conditioning tensor lengths before combining
+        all_conditionings = conditioning_masks
+        max_length = max([cond[0][0].shape[1] for cond in all_conditionings])
+        
+        # Pad all conditioning tensors to the same length
+        normalized_conditionings = []
+        for i, conditioning in enumerate(all_conditionings):
+            cond_list = []
+            for j, cond in enumerate(conditioning):
+                current_length = cond[0].shape[1]
+                
+                if current_length < max_length:
+                    pad_length = max_length - current_length
+                    last_token_embedding = cond[0][:, -1:, :]
+                    padding = last_token_embedding.repeat(1, pad_length, 1)
+                    padded_tensor = torch.cat([cond[0], padding], dim=1)
+                    cond_list.append([padded_tensor, cond[1]])
+                else:
+                    cond_list.append(cond)
+            normalized_conditionings.append(cond_list)
+        
+        # Combine normalized conditionings
+        positive_combined = normalized_conditionings[0]
+        for i in range(1, len(normalized_conditionings)):
+            positive_combined = ConditioningCombine().combine(positive_combined, normalized_conditionings[i])[0]
         return AttentionCoupleWildDivide().attention_couple(model[0], positive_combined, negative[0], "Attention")
 
 
@@ -297,16 +312,31 @@ class WildcardDivide:
             for positive, mask_composite in zip(positives, mask_composites)
         ]
 
-        positive_combined = conditioning_masks[0]
-        for i in range(1, len(conditioning_masks)):
-            positive_combined = ConditioningCombine().combine(positive_combined, conditioning_masks[i])[0]
-        max_length = max([cond[0].shape[1] for cond in positive_combined])
-        for cond in positive_combined:
-            if cond[0].shape[1] < max_length:
-                pad_length = max_length - cond[0].shape[1]
-                last_token_embedding = cond[0][:, -1:, :]
-                padding = last_token_embedding.repeat(1, pad_length, 1)
-                cond[0] = torch.cat([cond[0], padding], dim=1)
+        # Normalize conditioning tensor lengths before combining
+        all_conditionings = conditioning_masks
+        max_length = max([cond[0][0].shape[1] for cond in all_conditionings])
+        
+        # Pad all conditioning tensors to the same length
+        normalized_conditionings = []
+        for i, conditioning in enumerate(all_conditionings):
+            cond_list = []
+            for j, cond in enumerate(conditioning):
+                current_length = cond[0].shape[1]
+                
+                if current_length < max_length:
+                    pad_length = max_length - current_length
+                    last_token_embedding = cond[0][:, -1:, :]
+                    padding = last_token_embedding.repeat(1, pad_length, 1)
+                    padded_tensor = torch.cat([cond[0], padding], dim=1)
+                    cond_list.append([padded_tensor, cond[1]])
+                else:
+                    cond_list.append(cond)
+            normalized_conditionings.append(cond_list)
+        
+        # Combine normalized conditionings
+        positive_combined = normalized_conditionings[0]
+        for i in range(1, len(normalized_conditionings)):
+            positive_combined = ConditioningCombine().combine(positive_combined, normalized_conditionings[i])[0]
         return AttentionCoupleWildDivide().attention_couple(model, positive_combined, negative, "Attention")
 
 

@@ -148,6 +148,17 @@ class AttentionCoupleWildDivide:
                     k = k.to(q_target.dtype)
                     v = v.to(q_target.dtype)
                 qkv = optimized_attention(q_target, k, v, extra_options["n_heads"])
+                
+                # Ensure masks match qkv tensor dimensions
+                if qkv.shape[1] != masks.shape[1]:
+                    if masks.shape[1] > qkv.shape[1]:
+                        masks = masks[:, :qkv.shape[1], :]
+                    else:
+                        pad_length = qkv.shape[1] - masks.shape[1]
+                        padding = torch.zeros((masks.shape[0], pad_length, masks.shape[2]), 
+                                            dtype=masks.dtype, device=masks.device)
+                        masks = torch.cat([masks, padding], dim=1)
+                
                 qkv = qkv * masks
                 qkv = qkv.view(length, b, -1, module.heads * module.dim_head).sum(dim=0)
 
